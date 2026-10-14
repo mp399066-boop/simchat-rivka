@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* Colors live in lib/theme.ts (pages use inline styles). Only what CSS alone
+   can do is here: responsive switches, focus rings, animations. */
+
+html {
+  direction: rtl;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #FBF7F9;
+  color: #2A1A22;
+  font-family: var(--font-heebo), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+input:focus-visible, select:focus-visible, textarea:focus-visible,
+button:focus-visible, a:focus-visible {
+  outline: 2px solid #C8155B;
+  outline-offset: 2px;
+}
+
+/* ── Navigation: top links on desktop, bottom tabs on phones ── */
+.nav-desktop { display: flex; align-items: center; }
+.nav-mobile  { display: none; }
+
+@media (max-width: 767px) {
+  .nav-desktop { display: none; }
+  .nav-mobile  { display: flex; }
+  /* room for the bottom tabs */
+  .app-main    { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
