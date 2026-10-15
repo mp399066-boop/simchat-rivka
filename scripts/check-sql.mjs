@@ -27,6 +27,7 @@ const FILES = [
   'menu.sql',
   'prep-and-reminders.sql',
   'volunteers.sql',
+  'workflow.sql',
 ];
 
 const SUPABASE_STUBS = `
@@ -90,7 +91,7 @@ await db.exec(`
   -- prep: one task of the assigned mother goes to the OTHER volunteer (vol2), one is unassigned
   insert into prep_tasks (mother_id, menu_item_id, assignee_id)
     select m.id, i.id, u.id from mothers m, menu_items i, authorized_users u
-    where m.full_name = 'משובצת' and i.name = 'פשטידה' and u.email = 'vol2@test.local';
+    where m.full_name = 'משובצת' and i.name = 'קופסת ירקות' and u.email = 'vol2@test.local';
   insert into prep_tasks (mother_id, menu_item_id)
     select m.id, i.id from mothers m, menu_items i where m.full_name = 'משובצת' and i.name = 'מפיות';
   insert into confirm_tokens (mother_id) select id from mothers;
@@ -98,7 +99,7 @@ await db.exec(`
 // IDs are looked up here, as the owner — a lookup inside a check would run
 // under the tested role, where RLS can hide the row and mask the result.
 const idOf = async sql => `'${(await db.query(sql)).rows[0].id}'::uuid`;
-const VOL2_TASK = await idOf(`select t.id from prep_tasks t join menu_items i on i.id = t.menu_item_id where i.name = 'פשטידה'`);
+const VOL2_TASK = await idOf(`select t.id from prep_tasks t join menu_items i on i.id = t.menu_item_id where i.name = 'קופסת ירקות'`);
 const FREE_TASK = await idOf(`select t.id from prep_tasks t join menu_items i on i.id = t.menu_item_id where i.name = 'מפיות'`);
 const ASSIGNED   = await idOf(`select id from mothers where full_name = 'משובצת'`);
 const UNASSIGNED = await idOf(`select id from mothers where full_name = 'לא משובצת'`);
@@ -210,6 +211,31 @@ await db.exec(`begin; select set_config('request.jwt.claims', '{"email":"vol@tes
 const s4 = await stockOf();
 if ([s0, s1, s2, s3, s4].join() === '10,8,8,10,8') console.log('  ✓ stock: -2 quiches when packed, once; back when unpacked; also via a volunteer');
 else fail(`stock sequence expected 10,8,8,10,8 got ${[s0, s1, s2, s3, s4]}`);
+
+// Made-fresh items: ticking a preparation adds to "already made", packing
+// takes it off (never below 0), and the meal moves to "preparing".
+const veg = async () => (await db.query(`select stock from menu_items where name = 'קופסת ירקות'`)).rows[0].stock;
+const statusOf = async () => (await db.query(`select delivery_status from mothers where full_name = 'משובצת'`)).rows[0].delivery_status;
+const asAdmin = sql => db.exec(`begin; select set_config('request.jwt.claims', '{"email":"admin@test.local"}', true); set local role authenticated; ${sql}; commit;`);
+await db.exec(`update mothers set delivery_status = 'planned' where full_name = 'משובצת'; update prep_tasks set done = false; update menu_items set stock = 0 where name = 'קופסת ירקות'`);
+const v0 = await veg();
+await asAdmin(`select public.set_prep_done(${VOL2_TASK}, true)`);
+const v1 = await veg(); const st1 = await statusOf();
+await asAdmin(`select public.set_prep_done(${VOL2_TASK}, true)`);          // double tap: no change
+const v2 = await veg();
+await db.exec(`update mothers set delivery_status = 'ready' where full_name = 'משובצת'`);   // packed
+const v3 = await veg();
+await db.exec(`update mothers set delivery_status = 'delivered' where full_name = 'משובצת'`);
+await asAdmin(`select public.set_prep_done(${VOL2_TASK}, false)`);         // after packing: stock untouched
+const v4 = await veg();
+await db.exec(`update menu_items set stock = 0 where name = 'קופסת ירקות'; update mothers set delivery_status = 'planned', stock_used = false where full_name = 'משובצת'`);
+await db.exec(`update mothers set delivery_status = 'ready' where full_name = 'משובצת'`);   // packed without ticking
+const v5 = await veg();
+await db.exec(`update mothers set delivery_status = 'planned' where full_name = 'משובצת'`); // un-packed: no made-up count
+const v6 = await veg();
+const seq = [v0, v1, st1, v2, v3, v4, v5, v6].join();
+if (seq === '0,1,preparing,1,0,0,0,0') console.log('  ✓ fresh items: ✓ adds to "already made", packing takes it off (not below 0), un-packing adds nothing, meal → preparing');
+else fail(`fresh-item sequence expected 0,1,preparing,1,0,0,0,0 got ${seq}`);
 
 await db.close();
 if (failed) { console.error('\ncheck:sql FAILED'); process.exit(1); }

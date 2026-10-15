@@ -10,8 +10,13 @@ Follow the user's `build-standards` skill for every change. Project specifics:
   שמחת רבקה organization. Phone numbers and addresses are personal data.
 - **UI addresses users in the feminine form** ("לחצי", "נסי שוב"). Hebrew, RTL,
   phone-first (volunteers use phones).
-- Roles in `authorized_users`: `admin` (the manager — everything) and
-  `volunteer` (sees only deliveries/tasks assigned to her — from stage 2 on).
+- **The system is the manager's tool (פייגי).** Volunteers do NOT sign in —
+  they are a list (name, phone, cooks / delivers). Only managers (`admin`, with
+  e-mail) use the app. Keep it practical and simple: no WhatsApp / SMS;
+  contact is e-mail (reminders to mothers) and, later, phone.
+- Per meal there is a checklist ("מה מוכן", `prep_tasks`): ✓ what is ready,
+  optionally who is making it. No assignment workflow, no nagging to assign.
+- Source labels: מהפריזר / להכין / לקנות (`SOURCES` in `lib/menu.ts`).
 - Fixed menu per meal: rolls or bagels; veggie box (cucumber, tomato, onion,
   pepper, olives, sunflower seeds); 2 quiches; 2 cup desserts; dips or cheeses;
   cutlery and napkins.
@@ -67,8 +72,10 @@ Follow the user's `build-standards` skill for every change. Project specifics:
   a volunteer without e-mail is on the list (assignable; `can_deliver` /
   `can_cook` filter the pickers) but never signs in. A manager must have
   e-mail. Show a person with `displayName()` (`lib/users.ts`).
-- Home "מה צריך לעשות": `computeActions()` in `lib/actions.ts` turns open
-  problems into action lines with links (/mothers?q=<name>, /prep).
+- Home: "מה צריך לעשות" (`computeActions()`, `lib/actions.ts` — change requests,
+  make sure she's home, set a date, overdue), then "איפה כל ארוחה עומדת"
+  (`components/home/StatusBoard.tsx`, one-tap next step via `nextStatus()`),
+  then the freezer / make / buy list. /guide explains the routine.
 - /prep (manager) starts with the kitchen sheet per day (`KitchenDays`).
 - /confirm is PUBLIC: the mother answers via a secret token in
   `confirm_tokens` (server only). Token "demo" = the manager's sample mail.

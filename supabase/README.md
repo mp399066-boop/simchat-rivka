@@ -11,6 +11,7 @@ by hand. Every file is therefore **idempotent** — safe to run again at any tim
 | 2 | `mothers.sql` | `mothers` (new mothers + their one-time delivery), `set_delivery_status()` |
 | 3 | `menu.sql` | `menu_items` (fixed menu + stock), automatic stock use when a meal is packed |
 | 4 | `prep-and-reminders.sql` | `prep_tasks` (who prepares what), mother e-mail + reminder/confirmation, `confirm_tokens` |
+| 6 | `workflow.sql` | one stock count per item (✓ on a prep adds "already made"), prep tasks for fresh items only, auto "preparing" |
 | 5 | `volunteers.sql` | the team list: volunteers without e-mail (no sign-in), city, delivers / cooks, notes |
 
 For an existing database, run only the new/changed file.

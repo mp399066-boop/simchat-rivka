@@ -124,7 +124,7 @@ function AllPrep() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <PageHero title="הכנות" subtitle="כמה צריך מכל דבר בכל יום, מי מכינה מה, ומה כבר מוכן" />
+      <PageHero title="הכנות" subtitle="כמה צריך מכל דבר בכל יום, ומה כבר מוכן לכל ארוחה" />
       {data.state === 'ready' && items.length > 0 && (
         <KitchenDays mothers={data.mothers} items={items} prep={data.prep} today={israelDate()} />
       )}
@@ -135,7 +135,7 @@ function AllPrep() {
       {data.state === 'ready' && meals.length === 0 && (
         <StatusMessage title="אין ארוחות קרובות" text="ארוחות עם תאריך משלוח יופיעו כאן." />
       )}
-      {meals.length > 0 && <h2 className="no-print" style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: '4px 0 0' }}>שיבוץ לפי ארוחה</h2>}
+      {meals.length > 0 && <h2 className="no-print" style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: '4px 0 0' }}>מה מוכן לכל ארוחה</h2>}
       <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 440px), 1fr))', gap: 16 }}>
         {data.state === 'ready' && meals.map(m => {
           const tasks = data.prep.filter(t => t.mother_id === m.id);
@@ -154,7 +154,7 @@ function AllPrep() {
                   backgroundColor: tasks.length && done === tasks.length ? '#DCFCE7' : C.accentSub,
                   color: tasks.length && done === tasks.length ? '#166534' : C.accent,
                 }}>
-                  {tasks.length ? `${done}/${tasks.length} מוכנים` : 'לא שובץ'}
+                  {tasks.length ? `${done}/${tasks.length} מוכנים` : 'עוד לא סומן'}
                 </span>
               </div>
               {tasks.length > 0 && (
@@ -164,8 +164,8 @@ function AllPrep() {
                     return (
                       <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, color: t.done ? C.success : C.text }}>
                         <span>{t.done ? '✓ ' : ''}{item?.name ?? ''}</span>
-                        <span style={{ color: t.assignee_id ? C.sub : C.danger }}>
-                          {t.assignee_id ? names.get(t.assignee_id) ?? '' : 'לא שובץ'}
+                        <span style={{ color: C.sub }}>
+                          {t.assignee_id ? names.get(t.assignee_id) ?? '' : ''}
                         </span>
                       </li>
                     );
@@ -173,7 +173,7 @@ function AllPrep() {
                 </ul>
               )}
               <button onClick={() => setOpen(m)} style={{ ...buttonStyle('secondary'), alignSelf: 'flex-start' }}>
-                <Icon name="chef" size={17} />שיבוץ וסימון
+                <Icon name="check" size={17} />מה מוכן
               </button>
             </article>
           );

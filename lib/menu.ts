@@ -9,8 +9,8 @@ export type ItemSource = 'freezer' | 'prepare' | 'buy';
 
 export const SOURCES: { id: ItemSource; label: string; bg: string; text: string }[] = [
   { id: 'freezer', label: 'מהפריזר', bg: '#E0F2FE', text: '#075985' },
-  { id: 'prepare', label: 'מכינות',  bg: '#FEF3C7', text: '#92400E' },
-  { id: 'buy',     label: 'קונות',   bg: '#EDE9FE', text: '#5B21B6' },
+  { id: 'prepare', label: 'להכין',   bg: '#FEF3C7', text: '#92400E' },
+  { id: 'buy',     label: 'לקנות',   bg: '#EDE9FE', text: '#5B21B6' },
 ];
 export const sourceOf = (id: ItemSource) => SOURCES.find(s => s.id === id) ?? SOURCES[2];
 

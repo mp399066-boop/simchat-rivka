@@ -1,7 +1,5 @@
 import { hebrewDate, relativeDay, shiftDate } from '@/lib/dates';
-import type { MenuItem } from '@/lib/menu';
 import { isOpen, type Mother } from '@/lib/mothers';
-import type { PrepTask } from '@/lib/prepData';
 import type { IconName } from '@/components/ui/Icon';
 
 /**
@@ -30,17 +28,9 @@ export const URGENCY_LABELS: Record<Urgency, string> = {
 /** Link to the mothers page, filtered to one mother. */
 const motherLink = (m: Mother) => `/mothers?q=${encodeURIComponent(m.full_name)}`;
 
-export function computeActions({ mothers, prep, items, today }: {
-  mothers: Mother[];
-  prep: PrepTask[];
-  items: MenuItem[] | null;   // null = menu not loaded (prep lines are skipped)
-  today: string;
-}): Action[] {
+export function computeActions({ mothers, today }: { mothers: Mother[]; today: string }): Action[] {
   const tomorrow = shiftDate(today, 1);
-  const weekEnd = shiftDate(today, 6);
-  const activeItems = items?.filter(i => i.is_active) ?? [];
   const actions: Action[] = [];
-  const urgencyOf = (date: string): Urgency => (date <= tomorrow ? 'now' : date <= weekEnd ? 'week' : 'later');
   const when = (date: string) => `${relativeDay(date)} · ${hebrewDate(date)}`;
 
   for (const m of mothers.filter(isOpen)) {
@@ -74,33 +64,14 @@ export function computeActions({ mothers, prep, items, today }: {
       continue;
     }
 
-    const urgency = urgencyOf(date);
-    if (!m.delivery_volunteer_id) {
+    // Delivering today / tomorrow and she hasn't confirmed: make sure she's home.
+    if (date <= tomorrow && !m.confirm_response) {
       actions.push({
-        key: `deliver-${m.id}`, urgency, icon: 'truck',
-        text: `לשבץ מתנדבת שתמסור ל${m.full_name}`, detail: when(date),
-        href: motherLink(m), cta: 'לשיבוץ',
+        key: `confirm-${m.id}`, urgency: 'now', icon: 'phone',
+        text: `לוודא עם ${m.full_name} שתהיה בבית`,
+        detail: `${when(date)}${m.phone ? ` · ${m.phone}` : ''}${m.reminder_sent_at ? ' · נשלחה תזכורת במייל' : ''}`,
+        href: motherLink(m), cta: 'לסימון',
       });
-    }
-
-    if (items) {
-      const tasks = prep.filter(t => t.mother_id === m.id);
-      const unassigned = activeItems.filter(i => !tasks.some(t => t.menu_item_id === i.id && t.assignee_id)).length;
-      const notDone = tasks.filter(t => !t.done).length;
-      if (unassigned > 0 && urgency !== 'later') {
-        actions.push({
-          key: `prep-${m.id}`, urgency, icon: 'chef',
-          text: `לשבץ מי מכינה לארוחה של ${m.full_name}`,
-          detail: `${when(date)} · ${unassigned} פריטים בלי מבשלת`,
-          href: '/prep', cta: 'לשיבוץ',
-        });
-      } else if (notDone > 0 && date <= tomorrow) {
-        actions.push({
-          key: `prepdone-${m.id}`, urgency: 'now', icon: 'chef',
-          text: `${notDone} הכנות עוד לא מוכנות לארוחה של ${m.full_name}`, detail: when(date),
-          href: '/prep', cta: 'לבדיקה',
-        });
-      }
     }
   }
 

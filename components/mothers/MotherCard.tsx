@@ -5,7 +5,7 @@ import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
 import { gregorianDate, hebrewDate, relativeDay } from '@/lib/dates';
 import {
-  confirmationLabel, DELIVERY_STATUSES, fullAddress, isOpen, STATUS_COLORS, STATUS_LABELS, telLink, wazeLink,
+  confirmationLabel, DELIVERY_STATUSES, fullAddress, isOpen, nextStatus, STATUS_COLORS, STATUS_LABELS, telLink, wazeLink,
   type DeliveryStatus, type Mother,
 } from '@/lib/mothers';
 import { buttonStyle, card, colors as C, inputStyle, tile } from '@/lib/theme';
@@ -14,7 +14,7 @@ import { buttonStyle, card, colors as C, inputStyle, tile } from '@/lib/theme';
  * One mother + her delivery. The manager gets a status picker, edit and
  * delete; a volunteer gets "יצאתי" / "נמסר" buttons only.
  */
-export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, prep, onStatus, onEdit, onDelete, onPrep, onRemind }: {
+export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, prep, onStatus, onEdit, onDelete, onPrep, onRemind, onConfirm }: {
   mother: Mother;
   volunteerName?: string | null;
   isAdmin: boolean;
@@ -26,6 +26,8 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
   onDelete?: () => void;
   onPrep?: () => void;
   onRemind?: () => void;
+  /** Mark as confirmed (phone call / change handled). */
+  onConfirm?: () => void;
 }) {
   const address = fullAddress(m);
   const waze = wazeLink(m);
@@ -59,6 +61,14 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
               {confirmation.text}
             </span>
           )}
+          {isAdmin && onConfirm && isOpen(m) && m.delivery_date && m.confirm_response !== 'ok' && (
+            <button onClick={onConfirm} disabled={busy} style={{
+              marginTop: 6, marginInlineStart: confirmation ? 6 : 0, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 999, backgroundColor: C.tile, color: C.accent,
+            }}>
+              {m.confirm_response === 'change' ? 'טופל ✓' : 'אישרה (בטלפון) ✓'}
+            </button>
+          )}
         </div>
         <span style={{
           fontSize: 13, fontWeight: 800, padding: '6px 12px', borderRadius: 999, flexShrink: 0,
@@ -73,7 +83,7 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
         <Tile label="תאריך לידה" value={m.birth_date ? hebrewDate(m.birth_date) : '—'} sub={m.birth_date ? gregorianDate(m.birth_date) : undefined} />
         <Tile label="משלוח" value={m.delivery_date ? relativeDay(m.delivery_date) : '—'} sub={m.delivery_date ? hebrewDate(m.delivery_date) : 'לא נקבע'} />
         {isAdmin
-          ? <Tile label="מוסרת" value={volunteerName ?? 'לא שובצה'} warn={!volunteerName} />
+          ? <Tile label="מוסרת" value={volunteerName ?? '—'} />
           : <Tile label="עיר" value={m.city || '—'} />}
       </div>
 
@@ -108,6 +118,14 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
 
         {isAdmin ? (
           <>
+            {(() => {
+              const next = m.delivery_date ? nextStatus(m.delivery_status) : null;
+              return next && (
+                <button disabled={busy} onClick={() => onStatus(next.status)} style={buttonStyle('primary')}>
+                  {next.label}
+                </button>
+              );
+            })()}
             <select
               aria-label="מצב המשלוח"
               value={m.delivery_status}
@@ -122,7 +140,7 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
                 ...buttonStyle('secondary'),
                 ...(prep && prep.total && prep.done === prep.total ? { backgroundColor: C.successSub, color: C.success } : {}),
               }}>
-                <Icon name="chef" size={17} />הכנות{prep?.total ? ` ${prep.done}/${prep.total}` : ''}
+                <Icon name="check" size={17} />מה מוכן{prep?.total ? ` ${prep.done}/${prep.total}` : ''}
               </button>
             )}
             <span style={{ marginInlineStart: 'auto', display: 'flex', gap: 6 }}>

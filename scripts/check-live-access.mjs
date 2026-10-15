@@ -39,7 +39,7 @@ const created = { authIds: [], userRowIds: [], motherIds: [] };
 let stockBefore = null;   // active menu stock before the run — restored and compared at the end
 
 async function stockNow() {
-  const { data } = await service.from('menu_items').select('id, stock, per_meal').eq('is_active', true).order('id');
+  const { data } = await service.from('menu_items').select('id, stock, per_meal, source').eq('is_active', true).order('id');
   return data ?? [];
 }
 
@@ -97,8 +97,9 @@ try {
   const { error: vOut } = await clients.volunteer.rpc('set_delivery_status', { p_mother_id: m1?.id, p_status: 'delivered' });
   ok(!vOut, 'marks her delivery as delivered');
   const stockAfter = await stockNow();
-  ok(beforeDelivery.length > 0 && beforeDelivery.every((b, i) => stockAfter[i]?.stock === b.stock - b.per_meal),
-    'delivering took one meal off the stock (every active menu item)');
+  ok(beforeDelivery.length > 0 && beforeDelivery.every((b, i) =>
+    stockAfter[i]?.stock === (b.source === 'prepare' ? Math.max(0, b.stock - b.per_meal) : b.stock - b.per_meal)),
+    'delivering took one meal off the stock (made-fresh items not below 0)');
   const { data: vMenu } = await clients.volunteer.from('menu_items').select('id');
   ok((vMenu?.length ?? 0) > 0, 'reads the menu');
   const { data: vMenuEdit } = await clients.volunteer.from('menu_items').update({ stock: 999 }).eq('is_active', true).select('id');
@@ -112,7 +113,8 @@ try {
 
   // ── Preparation tasks + confirmation tokens ───────────────────────────────
   console.log('Preparation / reminders:');
-  const { data: item } = await service.from('menu_items').select('id').eq('is_active', true).limit(1).single();
+  // A made-fresh item: only those have preparation tasks (workflow.sql).
+  const { data: item } = await service.from('menu_items').select('id, stock, per_meal').eq('is_active', true).eq('source', 'prepare').limit(1).single();
   const { data: task, error: tErr } = await clients.admin.from('prep_tasks')
     // m2: still open (m1 was delivered above, and delivered meals drop out of my_prep_tasks).
     .insert({ mother_id: m2?.id, menu_item_id: item?.id, assignee_id: PEOPLE.other.rowId }).select('id').single();
@@ -121,6 +123,13 @@ try {
   ok(mine?.some(t => t.task_id === task?.id) && !('address' in (mine?.[0] ?? {})), 'the assignee sees her task (without address/phone)');
   const { error: ownDone } = await clients.other.rpc('set_prep_done', { p_task_id: task?.id, p_done: true });
   ok(!ownDone, 'the assignee ticks her task');
+  const { data: afterTick } = await service.from('menu_items').select('stock').eq('id', item?.id).single();
+  const { data: m2After } = await service.from('mothers').select('delivery_status, stock_used').eq('id', m2?.id).single();
+  ok(afterTick?.stock === item.stock + item.per_meal || m2After?.stock_used, "ticking adds the meal's amount to 'already made'");
+  // Untick again so the stock is back to what it was.
+  await clients.admin.rpc('set_prep_done', { p_task_id: task?.id, p_done: false });
+  const { data: afterUntick } = await service.from('menu_items').select('stock').eq('id', item?.id).single();
+  ok(afterUntick?.stock === item.stock, 'unticking takes it off again');
   const { error: foreignDone } = await clients.volunteer.rpc('set_prep_done', { p_task_id: task?.id, p_done: false });
   ok(!!foreignDone, "another volunteer cannot tick someone else's task");
   const { data: vTasks } = await clients.volunteer.from('prep_tasks').select('id').eq('id', task?.id);
@@ -160,6 +169,8 @@ try {
     if (error) console.error('  ! cleanup auth user failed:', error.message);
   }
   if (stockBefore) {
+    // Put every count back exactly as it was — this check must never change real stock.
+    for (const b of stockBefore) await service.from('menu_items').update({ stock: b.stock }).eq('id', b.id);
     const { data: final } = await service.from('menu_items').select('id, stock').eq('is_active', true).order('id');
     ok(JSON.stringify(final?.map(r => r.stock)) === JSON.stringify(stockBefore.map(r => r.stock)), 'stock is back to exactly what it was');
   }

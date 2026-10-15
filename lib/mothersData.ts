@@ -84,3 +84,21 @@ export async function setDeliveryStatus(id: string, status: DeliveryStatus): Pro
     return { error: 'אין חיבור לאינטרנט' };
   }
 }
+
+/**
+ * The manager marks the delivery as confirmed — after a phone call, or after
+ * handling a change she asked for. Her note (if any) is kept.
+ */
+export async function markConfirmed(id: string): Promise<{ error: string | null }> {
+  try {
+    const { data, error } = await supabase.from('mothers')
+      .update({ confirm_response: 'ok', confirmed_at: new Date().toISOString() }).eq('id', id).select('id');
+    if (error || !data?.length) {
+      if (error) console.error('[markConfirmed]', error.code, error.message);
+      return { error: 'העדכון נכשל' };
+    }
+    return { error: null };
+  } catch {
+    return { error: 'אין חיבור לאינטרנט' };
+  }
+}

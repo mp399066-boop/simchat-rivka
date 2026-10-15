@@ -97,7 +97,11 @@ export default function MenuItemCard({ plan, meals, busy, onStock, onEdit, onDel
       }}>
         <span style={{ display: 'flex', flexDirection: 'column', flexBasis: '100%' }}>
           <span style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{STOCK_QUESTION[item.source]}</span>
-          <span style={{ fontSize: 13, color: C.muted }}>הקלידי את המספר, או לחצי + כשנוסף ו־− כשהוצא</span>
+          <span style={{ fontSize: 13, color: C.muted }}>
+            {item.source === 'prepare'
+              ? 'עולה לבד כשמסמנים ✓ ב"מה מוכן" של ארוחה, ויורד כשהיא נארזת. אפשר גם לתקן ידנית'
+              : 'הקלידי את המספר, או לחצי + כשנוסף ו־− כשהוצא'}
+          </span>
         </span>
         <RoundButton label="הפחתה של אחד" disabled={busy} onClick={() => onStock(item.stock - 1)}>−</RoundButton>
         <input

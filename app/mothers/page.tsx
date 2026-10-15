@@ -9,7 +9,7 @@ import StatusMessage from '@/components/ui/StatusMessage';
 import MotherCard from '@/components/mothers/MotherCard';
 import MotherForm from '@/components/mothers/MotherForm';
 import PrepDialog from '@/components/prep/PrepDialog';
-import { deleteMother, saveMother, setDeliveryStatus } from '@/lib/mothersData';
+import { deleteMother, markConfirmed, saveMother, setDeliveryStatus } from '@/lib/mothersData';
 import { isOpen, type DeliveryStatus, type Mother, type MotherInput } from '@/lib/mothers';
 import { prepProgress, teamNames, useMothers } from '@/lib/useMothers';
 import { authFetch } from '@/lib/supabase';
@@ -88,6 +88,14 @@ export default function MothersPage() {
       toast.success(status === 'delivered' ? 'סומן שנמסר. תודה!' : 'המצב עודכן');
       await reload();
     }
+    setBusyId(null);
+  }
+
+  async function confirmMother(m: Mother) {
+    setBusyId(m.id);
+    const { error } = await markConfirmed(m.id);
+    if (error) toast.error(error);
+    else { toast.success(m.confirm_response === 'change' ? 'סומן שטופל' : 'סומן שאישרה'); await reload(); }
     setBusyId(null);
   }
 
@@ -191,6 +199,7 @@ export default function MothersPage() {
               prep={isAdmin ? progress.get(m.id) : undefined}
               onPrep={isAdmin ? () => setPrepFor(m) : undefined}
               onRemind={isAdmin ? () => remind(m) : undefined}
+              onConfirm={isAdmin ? () => confirmMother(m) : undefined}
             />
           ))}
         </div>

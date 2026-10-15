@@ -1,8 +1,9 @@
 /**
- * Preparation tasks — who prepares which menu item for which meal.
- * RLS (supabase/prep-and-reminders.sql): the manager reads and writes all;
- * a volunteer sees only her own tasks, through my_prep_tasks(), and ticks
- * them through set_prep_done(). Functions return Hebrew errors, never throw.
+ * The meal checklist (table prep_tasks): one line per meal × menu item —
+ * is it ready (✓), and optionally who is making it. The manager keeps it;
+ * ticking goes through set_prep_done(), which also keeps the "already made"
+ * count of made-fresh items in step (workflow.sql). Functions return Hebrew
+ * errors, never throw.
  */
 
 import { fetchAll } from '@/lib/fetchAll';
@@ -33,12 +34,13 @@ export interface MyPrepTask {
 type Result<T> = { data: T; error: null } | { data: null; error: string };
 const OFFLINE = 'אין חיבור לאינטרנט';
 
+const COLUMNS = 'id, mother_id, menu_item_id, assignee_id, done';
+
 /** All tasks (manager). */
 export async function loadAllPrep(): Promise<Result<PrepTask[]>> {
   try {
     const { data, error } = await fetchAll<PrepTask>((from, to) =>
-      supabase.from('prep_tasks').select('id, mother_id, menu_item_id, assignee_id, done')
-        .order('id').range(from, to));
+      supabase.from('prep_tasks').select(COLUMNS).order('id').range(from, to));
     if (error) {
       console.error('[loadAllPrep]', error.message);
       return { data: null, error: 'טעינת ההכנות נכשלה' };
@@ -53,7 +55,7 @@ export async function loadAllPrep(): Promise<Result<PrepTask[]>> {
 export async function loadPrepFor(motherId: string): Promise<Result<PrepTask[]>> {
   try {
     const { data, error } = await supabase.from('prep_tasks')
-      .select('id, mother_id, menu_item_id, assignee_id, done').eq('mother_id', motherId);
+      .select(COLUMNS).eq('mother_id', motherId);
     if (error) {
       console.error('[loadPrepFor]', error.message);
       return { data: null, error: 'טעינת ההכנות נכשלה' };
@@ -78,7 +80,7 @@ export async function loadMyPrep(): Promise<Result<MyPrepTask[]>> {
   }
 }
 
-/** Make sure a meal has a task for every active menu item (manager). */
+/** Make sure a meal's checklist has a line for every active menu item (manager). */
 export async function ensurePrepTasks(motherId: string, items: MenuItem[]): Promise<{ error: string | null }> {
   const rows = items.filter(i => i.is_active).map(i => ({ mother_id: motherId, menu_item_id: i.id }));
   if (!rows.length) return { error: null };

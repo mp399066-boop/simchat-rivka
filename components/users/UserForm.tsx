@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Field from '@/components/ui/Field';
 import Modal from '@/components/ui/Modal';
 import type { Role } from '@/lib/auth';
-import { isEmail, ROLE_LABELS, type AuthorizedUser } from '@/lib/users';
+import { isEmail, type AuthorizedUser } from '@/lib/users';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 export interface UserFormValues {
@@ -19,12 +19,15 @@ export interface UserFormValues {
 }
 
 /**
- * Add / edit a volunteer (or a manager), in a dialog. E-mail is optional:
- * without it she is on the list (to assign deliveries and cooking) but does
- * not sign in. `lockAccess` = the manager's own row (no lock-out).
+ * Add / edit a person, in a dialog.
+ *   mode 'volunteer' — name, phone, city, what she does, notes. Volunteers
+ *                      don't use the system: no e-mail, no role.
+ *   mode 'manager'   — also the Google e-mail she signs in with.
+ * `lockAccess` = the manager's own row (her e-mail can't be changed here).
  */
-export default function UserForm({ user, lockAccess, onSubmit, onClose }: {
+export default function UserForm({ user, mode, lockAccess, onSubmit, onClose }: {
   user?: AuthorizedUser;
+  mode: 'volunteer' | 'manager';
   lockAccess?: boolean;
   onSubmit: (values: UserFormValues) => Promise<boolean>;
   onClose: () => void;
@@ -37,7 +40,7 @@ export default function UserForm({ user, lockAccess, onSubmit, onClose }: {
     notes:       user?.notes ?? '',
     can_deliver: user?.can_deliver ?? true,
     can_cook:    user?.can_cook ?? true,
-    role:        user?.role ?? 'volunteer',
+    role:        user?.role ?? (mode === 'manager' ? 'admin' : 'volunteer'),
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +54,7 @@ export default function UserForm({ user, lockAccess, onSubmit, onClose }: {
     const email = values.email.trim();
     if (!values.full_name.trim() && !email) { setError('יש למלא שם'); return; }
     if (email && !isEmail(email)) { setError('כתובת המייל אינה תקינה'); return; }
-    if (values.role === 'admin' && !email) { setError('למנהלת חייב להיות מייל כדי להיכנס למערכת'); return; }
+    if (mode === 'manager' && !email) { setError('יש למלא את המייל שאיתו היא נכנסת למערכת'); return; }
     setError(null);
     setSaving(true);
     const ok = await onSubmit(values);
@@ -75,7 +78,7 @@ export default function UserForm({ user, lockAccess, onSubmit, onClose }: {
 
   return (
     <Modal
-      title={user ? 'עריכת מתנדבת' : 'מתנדבת חדשה'}
+      title={mode === 'manager' ? (user ? 'עריכת מנהלת' : 'מנהלת חדשה (גישה למערכת)') : (user ? 'עריכת מתנדבת' : 'מתנדבת חדשה')}
       busy={saving}
       onClose={onClose}
       onSubmit={handleSubmit}
@@ -105,19 +108,14 @@ export default function UserForm({ user, lockAccess, onSubmit, onClose }: {
         </div>
       </div>
 
-      <Field label="מייל (חשבון Google)" hint={lockAccess
-        ? 'זה החשבון שאיתו את נכנסת – אי אפשר לשנות אותו מכאן'
-        : 'לא חובה. עם מייל היא יכולה להיכנס למערכת ולקבל תזכורות. בלי מייל – היא ברשימה ואפשר לשבץ אותה, אבל היא לא נכנסת'}>
-        <input {...text('email')} type="email" dir="ltr" disabled={lockAccess} maxLength={200}
-          style={{ ...inputStyle, textAlign: 'left', opacity: lockAccess ? 0.7 : 1 }} />
-      </Field>
-      <Field label="תפקיד במערכת">
-        <select value={values.role} disabled={lockAccess}
-          onChange={e => setValues(old => ({ ...old, role: e.target.value as Role }))} style={inputStyle}>
-          <option value="volunteer">{ROLE_LABELS.volunteer} – רואה רק את מה שמשובץ לה</option>
-          <option value="admin">{ROLE_LABELS.admin} – רואה ומנהלת הכול</option>
-        </select>
-      </Field>
+      {mode === 'manager' && (
+        <Field label="מייל (חשבון Google שאיתו היא נכנסת)" required hint={lockAccess
+          ? 'זה החשבון שאיתו את נכנסת – אי אפשר לשנות אותו מכאן'
+          : 'מנהלת רואה ומנהלת הכול במערכת'}>
+          <input {...text('email')} type="email" dir="ltr" disabled={lockAccess} maxLength={200}
+            style={{ ...inputStyle, textAlign: 'left', opacity: lockAccess ? 0.7 : 1 }} />
+        </Field>
+      )}
       <Field label="הערות" hint="ימים שנוחים לה, מה היא אוהבת להכין, רכב וכו׳">
         <textarea {...text('notes')} rows={2} maxLength={1000} style={{ ...inputStyle, resize: 'vertical' }} />
       </Field>

@@ -70,9 +70,8 @@ export default function KitchenDays({ mothers, items, prep, today, days = 7 }: {
                             backgroundColor: src.bg, color: src.text,
                           }}>{src.label}</span>
                         </td>
-                        <td style={{ padding: '7px 0 7px 0', textAlign: 'left', whiteSpace: 'nowrap', fontSize: 13,
-                          color: ready === meals.length ? C.success : C.sub }}>
-                          {ready === meals.length ? '✓ מוכן' : `מוכן ${ready}/${meals.length}`}
+                        <td style={{ padding: '7px 0', textAlign: 'left', whiteSpace: 'nowrap', fontSize: 13 }}>
+                          <ItemState source={item.source} ready={ready} meals={meals.length} stock={item.stock} total={total} />
                         </td>
                       </tr>
                     );
@@ -87,5 +86,23 @@ export default function KitchenDays({ mothers, items, prep, today, days = 7 }: {
         })}
       </div>
     </section>
+  );
+}
+
+/**
+ * How many of the day's meals have this item ready (✓ in "מה מוכן"); for
+ * freezer / bought items also what is on hand now (red if not enough).
+ */
+function ItemState({ source, ready, meals, stock, total }: {
+  source: MenuItem['source']; ready: number; meals: number; stock: number; total: number;
+}) {
+  const readyText = <span style={{ color: ready === meals ? C.success : C.sub }}>{ready === meals ? '✓ מוכן' : `מוכן ${ready}/${meals}`}</span>;
+  if (source === 'prepare' || ready === meals) return readyText;
+  const enough = stock >= total;
+  return (
+    <span>
+      {readyText}
+      <span style={{ color: enough ? C.success : C.danger }}> · {source === 'freezer' ? 'בפריזר' : 'יש'} {Math.max(0, stock)}</span>
+    </span>
   );
 }

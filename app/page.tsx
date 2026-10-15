@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useMe } from '@/components/layout/AppShell';
 import ActionList from '@/components/home/ActionList';
+import StatusBoard from '@/components/home/StatusBoard';
 import TodoList from '@/components/menu/TodoList';
+import PrepDialog from '@/components/prep/PrepDialog';
+import { useFeedback } from '@/components/ui/Feedback';
 import Icon, { type IconName } from '@/components/ui/Icon';
 import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
@@ -12,16 +15,24 @@ import { computeActions } from '@/lib/actions';
 import { gregorianDate, hebrewDate, israelDate, weekday } from '@/lib/dates';
 import { todoLists, type MenuItem } from '@/lib/menu';
 import { loadMenu } from '@/lib/menuData';
-import { fullAddress, isOpen, STATUS_COLORS, STATUS_LABELS, type Mother } from '@/lib/mothers';
-import { teamNames, useMothers } from '@/lib/useMothers';
+import { setDeliveryStatus } from '@/lib/mothersData';
+import { isOpen, type DeliveryStatus, type Mother } from '@/lib/mothers';
+import { prepProgress, useMothers } from '@/lib/useMothers';
 import { buttonStyle, card, colors as C } from '@/lib/theme';
 
+/**
+ * The manager's day: what needs doing, where every meal stands (with a
+ * one-tap next step), and what to take out / make / buy.
+ */
 export default function HomePage() {
   const me = useMe();
   const isAdmin = me.role === 'admin';
-  const { data, retry } = useMothers(isAdmin);
+  const { toast } = useFeedback();
+  const { data, reload, retry } = useMothers(isAdmin);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [prepFor, setPrepFor] = useState<Mother | null>(null);
 
-  // The menu (for the to-do list) — manager only; the list is simply hidden if it fails to load.
+  // The menu (for the to-do list) — the list is simply hidden if it fails to load.
   const [menu, setMenu] = useState<MenuItem[] | null>(null);
   useEffect(() => {
     if (!isAdmin) return;
@@ -33,15 +44,12 @@ export default function HomePage() {
   const today = israelDate(0);
   const tomorrow = israelDate(1);
 
-  const groups = useMemo(() => {
+  const counts = useMemo(() => {
     const open = data.state === 'ready' ? data.mothers.filter(isOpen) : [];
     return {
-      open,
-      late:        open.filter(m => m.delivery_date && m.delivery_date < today),
-      today:       open.filter(m => m.delivery_date === today),
-      tomorrow:    open.filter(m => m.delivery_date === tomorrow),
-      unscheduled: open.filter(m => !m.delivery_date),
-      unassigned:  open.filter(m => m.delivery_date && !m.delivery_volunteer_id),
+      today: open.filter(m => m.delivery_date && m.delivery_date <= today).length,
+      tomorrow: open.filter(m => m.delivery_date === tomorrow).length,
+      open: open.length,
     };
   }, [data, today, tomorrow]);
 
@@ -49,13 +57,22 @@ export default function HomePage() {
     () => (menu?.length && data.state === 'ready' ? todoLists(menu, data.mothers, 'week') : null),
     [menu, data],
   );
-
-  const names = useMemo(() => teamNames(data.state === 'ready' ? data.team : []), [data]);
+  const progress = useMemo(() => prepProgress(data.state === 'ready' ? data.prep : []), [data]);
   const actions = useMemo(
-    () => (isAdmin && data.state === 'ready' ? computeActions({ mothers: data.mothers, prep: data.prep, items: menu, today }) : []),
-    [isAdmin, data, menu, today],
+    () => (isAdmin && data.state === 'ready' ? computeActions({ mothers: data.mothers, today }) : []),
+    [isAdmin, data, today],
   );
-  const attention = actions.length;
+
+  async function next(m: Mother, status: DeliveryStatus) {
+    setBusyId(m.id);
+    const { error } = await setDeliveryStatus(m.id, status);
+    if (error) toast.error(error);
+    else {
+      toast.success(status === 'delivered' ? `נמסר ל${m.full_name} ✓` : 'עודכן');
+      await reload();
+    }
+    setBusyId(null);
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -63,9 +80,14 @@ export default function HomePage() {
         title={`שלום${me.fullName ? ` ${me.fullName}` : ''}`}
         subtitle={`יום ${weekday(today)} · ${hebrewDate(today, true)} · ${gregorianDate(today)}`}
         action={
-          <Link href="/mothers" style={buttonStyle('light')}>
-            <Icon name="heart" size={18} />{isAdmin ? 'כל היולדות' : 'המשלוחים שלי'}
-          </Link>
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+            <Link href="/mothers" style={buttonStyle('light')}>
+              <Icon name="plus" size={18} />יולדת חדשה / כל היולדות
+            </Link>
+            <Link href="/guide" style={{ color: '#FFFFFF', fontSize: 14, fontWeight: 700, textDecoration: 'underline', paddingInlineStart: 6 }}>
+              איך עובדים עם המערכת?
+            </Link>
+          </span>
         }
       />
 
@@ -80,14 +102,24 @@ export default function HomePage() {
         <>
           {/* Numbers at a glance */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
-            <Stat icon="truck"    label="יוצאים היום" value={groups.today.length + groups.late.length} />
-            <Stat icon="calendar" label="מחר"         value={groups.tomorrow.length} />
-            <Stat icon="heart"    label="לטיפול"      value={groups.open.length} />
-            {isAdmin && <Stat icon="alert" label="דורש טיפול" value={attention} warn={attention > 0} />}
+            <Stat icon="truck"    label="יוצאים היום" value={counts.today} />
+            <Stat icon="calendar" label="מחר"         value={counts.tomorrow} />
+            <Stat icon="heart"    label="עוד לא נמסרו" value={counts.open} />
+            {isAdmin && <Stat icon="alert" label="דורש טיפול" value={actions.length} warn={actions.length > 0} />}
           </div>
 
-          {/* What needs the manager's attention — one line per open problem */}
-          {isAdmin && <ActionList actions={actions} />}
+          {/* What needs doing — one line per open problem */}
+          {isAdmin && actions.length > 0 && <ActionList actions={actions} />}
+
+          {/* Where every meal stands, with the next step */}
+          <StatusBoard
+            mothers={data.mothers}
+            progress={progress}
+            today={today}
+            busyId={busyId}
+            onNext={next}
+            onPrep={m => setPrepFor(m)}
+          />
 
           {/* What to take out of the freezer, make and buy */}
           {isAdmin && todo && (
@@ -97,12 +129,11 @@ export default function HomePage() {
               action={<Link href="/menu" style={buttonStyle('secondary')}>לתפריט ולמלאי</Link>}
             />
           )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 16 }}>
-            <DayList title="היום" date={today} mothers={[...groups.late, ...groups.today]} today={today} names={isAdmin ? names : null} />
-            <DayList title="מחר" date={tomorrow} mothers={groups.tomorrow} today={today} names={isAdmin ? names : null} />
-          </div>
         </>
+      )}
+
+      {prepFor && data.state === 'ready' && (
+        <PrepDialog mother={prepFor} team={data.team} onClose={() => { setPrepFor(null); reload(); }} />
       )}
     </div>
   );
@@ -124,72 +155,3 @@ function Stat({ icon, label, value, warn }: { icon: IconName; label: string; val
     </div>
   );
 }
-
-function DayList({ title, date, mothers, today, names }: {
-  title: string;
-  date: string;
-  mothers: Mother[];
-  today: string;
-  names: Map<string, string> | null;
-}) {
-  return (
-    <section style={card}>
-      <h2 style={h2}>
-        {title}
-        <span style={{ fontSize: 14, fontWeight: 500, color: C.sub }}>{hebrewDate(date)} · {gregorianDate(date)}</span>
-        <span style={{
-          marginInlineStart: 'auto', fontSize: 14, fontWeight: 800, padding: '3px 12px', borderRadius: 999,
-          backgroundColor: C.accentSub, color: C.accent,
-        }}>{mothers.length}</span>
-        <Link href="/print" title="דף משלוחים להדפסה" aria-label="דף משלוחים להדפסה" style={{
-          width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          backgroundColor: C.tile, color: C.sub,
-        }}>
-          <Icon name="printer" size={18} />
-        </Link>
-      </h2>
-      {mothers.length === 0 ? (
-        <p style={{ margin: 0, color: C.muted, fontSize: 15 }}>אין משלוחים</p>
-      ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {mothers.map(m => {
-            const s = STATUS_COLORS[m.delivery_status];
-            const late = m.delivery_date !== null && m.delivery_date < today;
-            return (
-              <li key={m.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-                padding: '10px 12px', borderRadius: 16, backgroundColor: C.tile,
-              }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>
-                    {m.full_name}
-                    {late && m.delivery_date && (
-                      <span style={{ color: C.danger, fontSize: 13 }}> · באיחור ({hebrewDate(m.delivery_date)})</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 14, color: C.sub }}>
-                    {fullAddress(m) || 'אין כתובת'}
-                    {names && <> · {m.delivery_volunteer_id
-                      ? (names.get(m.delivery_volunteer_id) ?? 'מתנדבת')
-                      : <span style={{ color: C.danger }}>לא שובצה</span>}</>}
-                  </div>
-                </div>
-                <span style={{
-                  fontSize: 13, fontWeight: 800, padding: '4px 10px', borderRadius: 999, flexShrink: 0,
-                  backgroundColor: s.bg, color: s.text, whiteSpace: 'nowrap',
-                }}>
-                  {STATUS_LABELS[m.delivery_status]}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-const h2 = {
-  fontSize: 18, fontWeight: 800, color: C.text, margin: '0 0 12px',
-  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-} as const;

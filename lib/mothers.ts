@@ -29,7 +29,7 @@ export const DELIVERY_STATUSES: DeliveryStatus[] = ['planned', 'preparing', 'rea
 export const STATUS_LABELS: Record<DeliveryStatus, string> = {
   planned:   'מתוכנן',
   preparing: 'בהכנה',
-  ready:     'מוכן',
+  ready:     'נארז',
   out:       'יצא למסירה',
   delivered: 'נמסר',
   cancelled: 'בוטל',
@@ -44,6 +44,14 @@ export const STATUS_COLORS: Record<DeliveryStatus, { bg: string; text: string }>
   delivered: { bg: '#DCFCE7', text: '#166534' },
   cancelled: { bg: '#F3F4F6', text: '#6B7280' },
 };
+
+/** The next step of a delivery, for a one-tap button (null = nothing next). */
+export function nextStatus(s: DeliveryStatus): { status: DeliveryStatus; label: string } | null {
+  if (s === 'planned' || s === 'preparing') return { status: 'ready', label: 'נארז ✓' };
+  if (s === 'ready') return { status: 'out', label: 'יצא למסירה' };
+  if (s === 'out') return { status: 'delivered', label: 'נמסר ✓' };
+  return null;
+}
 
 /** Still to be handled (not delivered, not cancelled). */
 export const isOpen = (m: Pick<Mother, 'delivery_status'>) =>

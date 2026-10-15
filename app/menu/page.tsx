@@ -130,7 +130,7 @@ export default function MenuPage() {
               </p>
             )}
             <p style={{ margin: 0, fontSize: 13, color: C.muted }}>
-              כשמשלוח מסומן &quot;מוכן&quot;, &quot;יצא&quot; או &quot;נמסר&quot;, הפריטים שלו יורדים מהמלאי לבד.
+              כשמשלוח מסומן &quot;נארז&quot;, &quot;יצא&quot; או &quot;נמסר&quot;, הפריטים שלו יורדים מהמלאי לבד. בפריטים שמכינים טריים, סימון ✓ ב&quot;מה מוכן&quot; של ארוחה מוסיף ל&quot;כבר מוכן&quot;.
             </p>
           </section>
 
