@@ -63,6 +63,13 @@ Follow the user's `build-standards` skill for every change. Project specifics:
   confirmation link), each volunteer and the managers. Gmail SMTP
   (`lib/mail.ts`, env `GMAIL_USER` + `GMAIL_APP_PASSWORD`) — nothing is sent
   until both are set. Cron failures e-mail the managers (`lib/cronAlert.ts`).
+- The team (`authorized_users`, screen "מתנדבות" at /users): e-mail is optional —
+  a volunteer without e-mail is on the list (assignable; `can_deliver` /
+  `can_cook` filter the pickers) but never signs in. A manager must have
+  e-mail. Show a person with `displayName()` (`lib/users.ts`).
+- Home "מה צריך לעשות": `computeActions()` in `lib/actions.ts` turns open
+  problems into action lines with links (/mothers?q=<name>, /prep).
+- /prep (manager) starts with the kitchen sheet per day (`KitchenDays`).
 - /confirm is PUBLIC: the mother answers via a secret token in
   `confirm_tokens` (server only). Token "demo" = the manager's sample mail.
 

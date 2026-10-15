@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { loadMothers, loadTeam } from '@/lib/mothersData';
 import { loadAllPrep, type PrepTask } from '@/lib/prepData';
 import type { Mother } from '@/lib/mothers';
-import type { AuthorizedUser } from '@/lib/users';
+import { displayName, type AuthorizedUser } from '@/lib/users';
 
 export type MothersState =
   | { state: 'loading' }
@@ -49,7 +49,7 @@ export function useMothers(isAdmin: boolean) {
 
 /** id → display name of each team member. */
 export function teamNames(team: AuthorizedUser[]): Map<string, string> {
-  return new Map(team.map(u => [u.id, u.full_name || u.email]));
+  return new Map(team.map(u => [u.id, displayName(u)]));
 }
 
 /** Done / total prep tasks per mother. */

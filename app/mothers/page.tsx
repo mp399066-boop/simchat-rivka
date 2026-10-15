@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useMe } from '@/components/layout/AppShell';
 import { useFeedback } from '@/components/ui/Feedback';
 import Icon from '@/components/ui/Icon';
@@ -23,6 +23,10 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 /** Open deliveries: soonest first, unscheduled last. Done: most recent first. */
+/** ?q=<name> in the address (links from the home page's action list). */
+const noSubscribe = () => () => {};
+const readQuery = () => new URLSearchParams(window.location.search).get('q') ?? '';
+
 function sortFor(tab: Tab) {
   return (a: Mother, b: Mother) => {
     const da = a.delivery_date ?? '9999-12-31';
@@ -38,7 +42,10 @@ export default function MothersPage() {
   const { confirm, toast } = useFeedback();
   const { data, reload, retry } = useMothers(isAdmin);
   const [tab, setTab] = useState<Tab>('open');
-  const [search, setSearch] = useState('');
+  const urlQuery = useSyncExternalStore(noSubscribe, readQuery, () => '');
+  // null = untouched: then the search comes from the link.
+  const [typed, setSearch] = useState<string | null>(null);
+  const search = typed ?? urlQuery;
   const [editing, setEditing] = useState<Mother | 'new' | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [prepFor, setPrepFor] = useState<Mother | null>(null);

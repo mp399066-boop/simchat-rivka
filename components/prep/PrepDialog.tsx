@@ -8,7 +8,7 @@ import type { MenuItem } from '@/lib/menu';
 import { loadMenu } from '@/lib/menuData';
 import type { Mother } from '@/lib/mothers';
 import { assignPrep, ensurePrepTasks, loadPrepFor, setPrepDone, type PrepTask } from '@/lib/prepData';
-import type { AuthorizedUser } from '@/lib/users';
+import { displayName, type AuthorizedUser } from '@/lib/users';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 type Load = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; items: MenuItem[]; tasks: PrepTask[] };
@@ -40,7 +40,8 @@ export default function PrepDialog({ mother, team, onClose }: {
     return () => { cancelled = true; };
   }, [mother.id]);
 
-  const people = team.filter(u => u.is_active);
+  // Active people who cook (plus whoever is already assigned here).
+  const people = team.filter(u => u.is_active && (u.can_cook || load.state === 'ready' && load.tasks.some(t => t.assignee_id === u.id)));
   const rows = load.state === 'ready'
     ? load.items
         .map(item => ({ item, task: load.tasks.find(t => t.menu_item_id === item.id) }))
@@ -100,7 +101,7 @@ export default function PrepDialog({ mother, team, onClose }: {
               style={{ ...inputStyle, width: 'auto', minWidth: 190, marginInlineStart: 'auto', borderRadius: 999 }}
             >
               <option value="">שיבוץ הכול ל...</option>
-              {people.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+              {people.map(u => <option key={u.id} value={u.id}>{displayName(u)}</option>)}
             </select>
           </div>
 
@@ -129,7 +130,7 @@ export default function PrepDialog({ mother, team, onClose }: {
                   style={{ ...inputStyle, width: 'auto', minWidth: 150, flex: '0 1 200px', borderRadius: 999 }}
                 >
                   <option value="">לא שובץ</option>
-                  {people.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email}</option>)}
+                  {people.map(u => <option key={u.id} value={u.id}>{displayName(u)}</option>)}
                 </select>
               </li>
             ))}

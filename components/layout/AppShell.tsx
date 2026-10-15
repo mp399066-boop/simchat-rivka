@@ -36,7 +36,7 @@ const navItems: { href: string; label: string; volunteerLabel?: string; icon: Ic
   { href: '/mothers', label: 'יולדות',    volunteerLabel: 'המשלוחים שלי', icon: 'heart' },
   { href: '/prep',    label: 'הכנות',     volunteerLabel: 'ההכנות שלי', icon: 'chef' },
   { href: '/menu',    label: 'תפריט ומלאי', icon: 'list',  adminOnly: true },
-  { href: '/users',   label: 'משתמשות',   icon: 'users', adminOnly: true },
+  { href: '/users',   label: 'מתנדבות',   icon: 'users', adminOnly: true },
 ];
 
 /** Pages shown without the shell (and without the access check). */

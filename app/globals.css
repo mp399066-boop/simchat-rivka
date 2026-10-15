@@ -39,7 +39,13 @@ button:disabled { opacity: 0.6; cursor: default; }
 .hero-body   { padding: 34px 40px 34px 230px; min-height: 200px; justify-content: center; }
 .hero-action { position: absolute; left: 96px; top: 50%; transform: translateY(-50%); }
 
+/* ── Lists: a table on desktop, cards on phones ── */
+.only-desktop { display: block; }
+.only-mobile  { display: none; }
+
 @media (max-width: 767px) {
+  .only-desktop { display: none; }
+  .only-mobile  { display: block; }
   .nav-desktop { display: none; }
   .nav-mobile  { display: flex; }
   /* room for the bottom tabs */

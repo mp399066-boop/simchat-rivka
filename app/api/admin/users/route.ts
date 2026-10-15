@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabaseServer';
 import { getAdminUser, normalizeEmail } from '@/lib/auth';
 import { fetchAll } from '@/lib/fetchAll';
-import { cleanText, isEmail, isRole, type AuthorizedUser } from '@/lib/users';
-
-const COLUMNS = 'id, email, full_name, phone, role, is_active, created_at';
+import { parsePerson, USER_COLUMNS as COLUMNS, type AuthorizedUser } from '@/lib/users';
 
 /* GET /api/admin/users — all authorized users (manager only) */
 export async function GET(req: NextRequest) {
@@ -23,28 +21,18 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-/* POST /api/admin/users — add an authorized user (manager only) */
+/* POST /api/admin/users — add a person to the team (manager only) */
 export async function POST(req: NextRequest) {
   const admin = await getAdminUser(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = await req.json().catch(() => null);
-  const email = normalizeEmail(typeof body?.email === 'string' ? body.email : '');
-  const role = body?.role ?? 'volunteer';
-
-  if (!isEmail(email)) return NextResponse.json({ error: 'כתובת המייל אינה תקינה' }, { status: 400 });
-  if (!isRole(role))   return NextResponse.json({ error: 'תפקיד לא חוקי' }, { status: 400 });
+  const parsed = parsePerson(await req.json().catch(() => null), normalizeEmail);
+  if (parsed.error !== null) return NextResponse.json({ error: parsed.error }, { status: 400 });
 
   const supabase = createServerClient();
   const { data, error } = await supabase
     .from('authorized_users')
-    .insert({
-      email,
-      role,
-      full_name: cleanText(body?.full_name),
-      phone:     cleanText(body?.phone, 30),
-      is_active: true,
-    })
+    .insert({ ...parsed.data, is_active: true })
     .select(COLUMNS)
     .single();
 

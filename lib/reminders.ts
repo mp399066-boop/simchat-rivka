@@ -100,8 +100,9 @@ export async function runDailyReminders(baseUrl: string): Promise<DailySummary> 
   summary.deliveries = mothers.length;
   if (!mothers.length) return summary;
 
+  // Only people with an e-mail can get one (volunteers without e-mail are on paper).
   const people = must<Person[]>(await db.from('authorized_users')
-    .select('id, email, full_name, role').eq('is_active', true), 'authorized_users');
+    .select('id, email, full_name, role').eq('is_active', true).not('email', 'is', null), 'authorized_users');
   const items = must<MenuItem[]>(await db.from('menu_items').select('*').order('sort_order'), 'menu_items');
   const tasks = must<Task[]>(await db.from('prep_tasks')
     .select('mother_id, menu_item_id, assignee_id, done').in('mother_id', mothers.map(m => m.id)), 'prep_tasks');

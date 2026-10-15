@@ -26,6 +26,7 @@ const FILES = [
   'mothers.sql',
   'menu.sql',
   'prep-and-reminders.sql',
+  'volunteers.sql',
 ];
 
 const SUPABASE_STUBS = `
@@ -167,6 +168,23 @@ await db.exec(`update mothers set delivery_status = 'out' where full_name = 'מ�
 const d2 = (await db.query(`select delivered_at is null as v from mothers where full_name = 'משובצת'`)).rows[0].v;
 if (d1 && d2) console.log('  ✓ delivered_at is set on delivery and cleared when the status goes back');
 else fail('delivered_at does not follow delivery_status');
+
+// Volunteers without e-mail (no sign-in): allowed, but never grant access.
+await db.exec(`insert into authorized_users (full_name, role) values ('בלי מייל', 'volunteer')`);
+const noMail = [
+  await as('authenticated', '', 'select public.is_authorized_user()'),
+  await as('authenticated', null, 'select public.is_authorized_user()'),
+];
+if (noMail.every(v => v === false)) console.log('  ✓ a volunteer without e-mail grants no access (empty / missing e-mail claim)');
+else fail(`a row without e-mail matched a sign-in: ${noMail}`);
+let adminNoMail = 'inserted';
+try { await db.exec(`insert into authorized_users (full_name, role) values ('מנהלת בלי מייל', 'admin')`); }
+catch { adminNoMail = 'rejected'; }
+let nobody = 'inserted';
+try { await db.exec(`insert into authorized_users (role) values ('volunteer')`); }
+catch { nobody = 'rejected'; }
+if (adminNoMail === 'rejected' && nobody === 'rejected') console.log('  ✓ a manager must have e-mail; a row needs a name or an e-mail');
+else fail(`manager without e-mail: ${adminNoMail}; row without name/e-mail: ${nobody}`);
 
 // A new delivery date clears the reminder and the confirmation.
 await db.exec(`update mothers set delivery_date = '2030-01-01', reminder_sent_at = now(), confirmed_at = now(), confirm_response = 'ok' where full_name = 'משובצת'`);

@@ -6,7 +6,7 @@ import Field from '@/components/ui/Field';
 import Modal from '@/components/ui/Modal';
 import { fullDate, nextDeliveryDay, noDeliveryReason, shiftDate } from '@/lib/dates';
 import { DELIVERY_STATUSES, STATUS_LABELS, type Mother, type MotherInput } from '@/lib/mothers';
-import type { AuthorizedUser } from '@/lib/users';
+import { displayName, type AuthorizedUser } from '@/lib/users';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 type Values = Record<Exclude<keyof MotherInput, 'delivery_status'>, string> & Pick<MotherInput, 'delivery_status'>;
@@ -78,8 +78,8 @@ export default function MotherForm({ mother, team, others, onSubmit, onClose }: 
     ? others.find(o => o.id !== mother?.id && o.phone?.replace(/D/g, '') === phoneDigits)
     : undefined;
 
-  // Active users, plus the currently assigned one even if she was paused.
-  const choices = team.filter(u => u.is_active || u.id === mother?.delivery_volunteer_id);
+  // Active people who deliver, plus the currently assigned one even if paused.
+  const choices = team.filter(u => (u.is_active && u.can_deliver) || u.id === mother?.delivery_volunteer_id);
 
   async function handleSubmit() {
     if (!values.full_name.trim()) { setError('יש למלא את שם היולדת'); return; }
@@ -197,7 +197,7 @@ export default function MotherForm({ mother, team, others, onSubmit, onClose }: 
           <select {...bind('delivery_volunteer_id')} style={inputStyle}>
             <option value="">עוד לא שובצה</option>
             {choices.map(u => (
-              <option key={u.id} value={u.id}>{u.full_name || u.email}{u.is_active ? '' : ' (מושהית)'}</option>
+              <option key={u.id} value={u.id}>{displayName(u)}{u.is_active ? '' : ' (מושהית)'}</option>
             ))}
           </select>
         </Field>

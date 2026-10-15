@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useMe } from '@/components/layout/AppShell';
+import ActionList from '@/components/home/ActionList';
 import TodoList from '@/components/menu/TodoList';
 import Icon, { type IconName } from '@/components/ui/Icon';
 import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
+import { computeActions } from '@/lib/actions';
 import { gregorianDate, hebrewDate, israelDate, weekday } from '@/lib/dates';
 import { todoLists, type MenuItem } from '@/lib/menu';
 import { loadMenu } from '@/lib/menuData';
@@ -49,7 +51,11 @@ export default function HomePage() {
   );
 
   const names = useMemo(() => teamNames(data.state === 'ready' ? data.team : []), [data]);
-  const attention = groups.late.length + groups.unscheduled.length + groups.unassigned.length;
+  const actions = useMemo(
+    () => (isAdmin && data.state === 'ready' ? computeActions({ mothers: data.mothers, prep: data.prep, items: menu, today }) : []),
+    [isAdmin, data, menu, today],
+  );
+  const attention = actions.length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -80,17 +86,8 @@ export default function HomePage() {
             {isAdmin && <Stat icon="alert" label="דורש טיפול" value={attention} warn={attention > 0} />}
           </div>
 
-          {/* What needs the manager's attention */}
-          {isAdmin && attention > 0 && (
-            <section style={{ ...card, background: '#FFFBEB', borderColor: '#FDE68A' }}>
-              <h2 style={{ ...h2, color: '#92400E' }}><Icon name="alert" size={20} />דורש טיפול</h2>
-              <ul style={{ margin: 0, paddingInlineStart: 20, color: C.text, fontSize: 15, lineHeight: 1.9 }}>
-                {groups.late.length > 0 && <li>{groups.late.length} משלוחים שתאריכם עבר ועוד לא סומנו כנמסרו</li>}
-                {groups.unscheduled.length > 0 && <li>{groups.unscheduled.length} יולדות בלי תאריך משלוח</li>}
-                {groups.unassigned.length > 0 && <li>{groups.unassigned.length} משלוחים בלי מתנדבת שמוסרת</li>}
-              </ul>
-            </section>
-          )}
+          {/* What needs the manager's attention — one line per open problem */}
+          {isAdmin && <ActionList actions={actions} />}
 
           {/* What to take out of the freezer, make and buy */}
           {isAdmin && todo && (
