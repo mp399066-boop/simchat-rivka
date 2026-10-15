@@ -3,8 +3,16 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
-import { sourceOf, type ItemPlan } from '@/lib/menu';
+import { sourceOf, type ItemPlan, type ItemSource } from '@/lib/menu';
 import { card, colors as C, tile } from '@/lib/theme';
+
+/** The question above the stock field, by where the item comes from. */
+const STOCK_QUESTION: Record<ItemSource, string> = {
+  freezer: 'כמה יש עכשיו בפריזר?',
+  prepare: 'כמה כבר מוכן?',
+  buy: 'כמה כבר קנינו (יש בבית)?',
+};
+const STOCK_LABEL: Record<ItemSource, string> = { freezer: 'יש בפריזר', prepare: 'כבר מוכן', buy: 'יש בבית' };
 
 /**
  * One menu item: how many per meal, how many are needed for the coming meals,
@@ -78,7 +86,7 @@ export default function MenuItemCard({ plan, meals, busy, onStock, onEdit, onDel
       {/* Tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
         <Tile value={needed} label={`צריך ל-${meals} ארוחות`} />
-        <Tile value={item.stock} label={item.source === 'freezer' ? 'יש בפריזר' : 'יש במלאי'} warn={item.stock < 0} />
+        <Tile value={item.stock} label={STOCK_LABEL[item.source]} warn={item.stock < 0} />
         <Tile value={missing} label="חסר" warn={missing > 0} good={item.is_active && needed > 0 && !missing} />
       </div>
 
@@ -87,7 +95,10 @@ export default function MenuItemCard({ plan, meals, busy, onStock, onEdit, onDel
         display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
         paddingTop: 12, borderTop: `1px solid ${C.border}`,
       }}>
-        <span style={{ fontSize: 14, fontWeight: 600, color: C.sub }}>מלאי:</span>
+        <span style={{ display: 'flex', flexDirection: 'column', flexBasis: '100%' }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{STOCK_QUESTION[item.source]}</span>
+          <span style={{ fontSize: 13, color: C.muted }}>הקלידי את המספר, או לחצי + כשנוסף ו־− כשהוצא</span>
+        </span>
         <RoundButton label="הפחתה של אחד" disabled={busy} onClick={() => onStock(item.stock - 1)}>−</RoundButton>
         <input
           aria-label={`מלאי ${item.name}`} type="number" inputMode="numeric" step={1} disabled={busy}
@@ -101,6 +112,7 @@ export default function MenuItemCard({ plan, meals, busy, onStock, onEdit, onDel
           }}
         />
         <RoundButton label="הוספה של אחד" disabled={busy} onClick={() => onStock(item.stock + 1)}>+</RoundButton>
+        <span style={{ fontSize: 14, color: C.sub }}>{item.unit}</span>
         <span style={{ marginInlineStart: 'auto', display: 'flex', gap: 6 }}>
           <IconButton label="עריכה" icon="edit" onClick={onEdit} />
           <IconButton label="מחיקה" icon="trash" onClick={onDelete} danger />
