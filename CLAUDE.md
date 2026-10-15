@@ -65,7 +65,11 @@ Follow the user's `build-standards` skill for every change. Project specifics:
   ("ההכנות שלי") via `my_prep_tasks()` / `set_prep_done()` (`lib/prepData.ts`).
 - Reminders (`lib/reminders.ts`): the evening before (cron in vercel.json →
   /api/cron/reminders, `CRON_SECRET`), e-mails go to the mother (with a
-  confirmation link), each volunteer and the managers. Gmail SMTP
+  confirmation link), each volunteer and the managers. No dial / navigation
+  buttons (the manager asked). צינתוק (`lib/tzintuk.ts`, ימות המשיח API, env
+  `TZINTUK_TOKEN` + optional `TZINTUK_CALLER_ID`): to the mother the evening
+  before and the morning of the delivery (/api/cron/tzintuk/[when]) and a
+  button on her card — inactive until the line is connected. Gmail SMTP
   (`lib/mail.ts`, env `GMAIL_USER` + `GMAIL_APP_PASSWORD`) — nothing is sent
   until both are set. Cron failures e-mail the managers (`lib/cronAlert.ts`).
 - The team (`authorized_users`, screen "מתנדבות" at /users): e-mail is optional —

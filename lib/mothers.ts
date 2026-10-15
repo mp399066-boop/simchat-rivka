@@ -62,19 +62,10 @@ export type MotherInput = Pick<Mother,
   'full_name' | 'phone' | 'email' | 'address' | 'city' | 'address_notes' | 'birth_date' | 'notes'
   | 'delivery_date' | 'delivery_status' | 'delivery_volunteer_id'>;
 
-/** Full address in one line, for display and for navigation apps. */
+/** Full address in one line, for display. */
 export function fullAddress(m: Pick<Mother, 'address' | 'city'>): string {
   return [m.address, m.city].filter(Boolean).join(', ');
 }
-
-/** Waze navigation link for the address, or null if there is none. */
-export function wazeLink(m: Pick<Mother, 'address' | 'city'>): string | null {
-  const a = fullAddress(m);
-  return a ? `https://waze.com/ul?q=${encodeURIComponent(a)}&navigate=yes` : null;
-}
-
-/** tel: link (digits and + only). */
-export const telLink = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
 
 /** What the mother answered to the reminder, for display. */
 export function confirmationLabel(m: Pick<Mother, 'reminder_sent_at' | 'confirm_response'>): { text: string; tone: 'ok' | 'warn' | 'wait' } | null {

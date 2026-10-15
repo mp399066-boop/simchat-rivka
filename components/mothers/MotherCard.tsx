@@ -5,7 +5,7 @@ import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
 import { gregorianDate, hebrewDate, relativeDay } from '@/lib/dates';
 import {
-  confirmationLabel, DELIVERY_STATUSES, fullAddress, isOpen, nextStatus, STATUS_COLORS, STATUS_LABELS, telLink, wazeLink,
+  confirmationLabel, DELIVERY_STATUSES, fullAddress, isOpen, nextStatus, STATUS_COLORS, STATUS_LABELS,
   type DeliveryStatus, type Mother,
 } from '@/lib/mothers';
 import { buttonStyle, card, colors as C, inputStyle, tile } from '@/lib/theme';
@@ -14,7 +14,7 @@ import { buttonStyle, card, colors as C, inputStyle, tile } from '@/lib/theme';
  * One mother + her delivery. The manager gets a status picker, edit and
  * delete; a volunteer gets "יצאתי" / "נמסר" buttons only.
  */
-export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, prep, onStatus, onEdit, onDelete, onPrep, onRemind, onConfirm }: {
+export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, prep, onStatus, onEdit, onDelete, onPrep, onRemind, onTzintuk, onConfirm }: {
   mother: Mother;
   volunteerName?: string | null;
   isAdmin: boolean;
@@ -26,11 +26,12 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
   onDelete?: () => void;
   onPrep?: () => void;
   onRemind?: () => void;
+  /** Ring her phone now (passed only when a phone line is connected). */
+  onTzintuk?: () => void;
   /** Mark as confirmed (phone call / change handled). */
   onConfirm?: () => void;
 }) {
   const address = fullAddress(m);
-  const waze = wazeLink(m);
   const status = STATUS_COLORS[m.delivery_status];
   const confirmation = confirmationLabel(m);
   const CONFIRM_LOOK = { ok: { bg: '#DCFCE7', fg: '#166534' }, warn: { bg: '#FEF3C7', fg: '#92400E' }, wait: { bg: C.tile, fg: C.sub } };
@@ -109,13 +110,6 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
         display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center',
         paddingTop: 12, borderTop: `1px solid ${C.border}`,
       }}>
-        {m.phone && <a href={telLink(m.phone)} style={buttonStyle('secondary')}><Icon name="phone" size={17} />חיוג</a>}
-        {waze && (
-          <a href={waze} target="_blank" rel="noopener noreferrer" style={buttonStyle('secondary')}>
-            <Icon name="navigate" size={17} />ניווט
-          </a>
-        )}
-
         {isAdmin ? (
           <>
             {(() => {
@@ -146,6 +140,9 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
             <span style={{ marginInlineStart: 'auto', display: 'flex', gap: 6 }}>
               {onRemind && m.email && m.delivery_date && isOpen(m) && (
                 <IconButton label="שליחת תזכורת במייל" icon="mail" onClick={onRemind} />
+              )}
+              {onTzintuk && m.phone && m.delivery_date && isOpen(m) && (
+                <IconButton label="שליחת צינתוק" icon="phone" onClick={onTzintuk} />
               )}
               <IconButton label="עריכה" icon="edit" onClick={onEdit} />
               <IconButton label="מחיקה" icon="trash" onClick={onDelete} danger />

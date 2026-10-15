@@ -13,6 +13,7 @@ import { deleteMother, markConfirmed, saveMother, setDeliveryStatus } from '@/li
 import { isOpen, type DeliveryStatus, type Mother, type MotherInput } from '@/lib/mothers';
 import { prepProgress, teamNames, useMothers } from '@/lib/useMothers';
 import { authFetch } from '@/lib/supabase';
+import { useTzintukStatus } from '@/lib/useTzintuk';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 type Tab = 'open' | 'done' | 'all';
@@ -49,6 +50,7 @@ export default function MothersPage() {
   const [editing, setEditing] = useState<Mother | 'new' | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [prepFor, setPrepFor] = useState<Mother | null>(null);
+  const tzintukOn = useTzintukStatus(isAdmin) === 'on';
 
   const mothers = useMemo(() => (data.state === 'ready' ? data.mothers : []), [data]);
   const names = useMemo(() => teamNames(data.state === 'ready' ? data.team : []), [data]);
@@ -111,6 +113,24 @@ export default function MothersPage() {
       const body = await res.json().catch(() => ({}));
       if (res.ok) { toast.success('התזכורת נשלחה'); await reload(); }
       else toast.error(typeof body.error === 'string' && res.status !== 401 ? body.error : 'השליחה נכשלה');
+    } catch {
+      toast.error('אין חיבור לאינטרנט');
+    }
+    setBusyId(null);
+  }
+
+  async function tzintuk(m: Mother) {
+    const ok = await confirm({
+      title: 'שליחת צינתוק', confirmLabel: 'שליחה', danger: false,
+      message: `לשלוח עכשיו צינתוק לטלפון של ${m.full_name}?`,
+    });
+    if (!ok) return;
+    setBusyId(m.id);
+    try {
+      const res = await authFetch('/api/tzintuk/send', { method: 'POST', body: JSON.stringify({ motherId: m.id }) });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) toast.success('הצינתוק נשלח');
+      else toast.error(typeof body.error === 'string' && res.status !== 401 ? body.error : 'הצינתוק נכשל');
     } catch {
       toast.error('אין חיבור לאינטרנט');
     }
@@ -199,6 +219,7 @@ export default function MothersPage() {
               prep={isAdmin ? progress.get(m.id) : undefined}
               onPrep={isAdmin ? () => setPrepFor(m) : undefined}
               onRemind={isAdmin ? () => remind(m) : undefined}
+              onTzintuk={isAdmin && tzintukOn ? () => tzintuk(m) : undefined}
               onConfirm={isAdmin ? () => confirmMother(m) : undefined}
             />
           ))}

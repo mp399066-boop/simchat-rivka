@@ -8,9 +8,10 @@ import IconButton from '@/components/ui/IconButton';
 import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
 import MailSettingsCard from '@/components/users/MailSettingsCard';
+import TzintukSettingsCard from '@/components/users/TzintukSettingsCard';
 import UserForm, { type UserFormValues } from '@/components/users/UserForm';
 import { israelDate } from '@/lib/dates';
-import { isOpen, telLink } from '@/lib/mothers';
+import { isOpen } from '@/lib/mothers';
 import { authFetch } from '@/lib/supabase';
 import { useMothers } from '@/lib/useMothers';
 import { displayName, tasksLabel, type AuthorizedUser } from '@/lib/users';
@@ -200,7 +201,7 @@ export default function VolunteersPage() {
                         <div style={{ fontWeight: 700 }}>{displayName(u)}{!u.is_active && <span style={{ color: C.muted, fontWeight: 500 }}> (מושהית)</span>}</div>
                         {u.notes && <div style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>{u.notes}</div>}
                       </td>
-                      <td style={td}>{u.phone ? <a href={telLink(u.phone)} dir="ltr" style={{ color: C.text }}>{u.phone}</a> : '—'}</td>
+                      <td style={td}>{u.phone ? <span dir="ltr">{u.phone}</span> : '—'}</td>
                       <td style={td}>{u.city ?? '—'}</td>
                       <td style={td}>{tasksLabel(u) || '—'}</td>
                       <td style={tdNum}>{s?.deliveries ?? 0}</td>
@@ -232,7 +233,7 @@ export default function VolunteersPage() {
                     </div>
                     {u.notes && <div style={{ fontSize: 14, color: C.sub }}>{u.notes}</div>}
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-                      {u.phone && <a href={telLink(u.phone)} style={{ ...buttonStyle('secondary'), minHeight: 40, padding: '6px 14px', fontSize: 14 }}><Icon name="phone" size={16} />חיוג</a>}
+                      {u.phone && <span dir="ltr" style={{ fontSize: 15, color: C.text }}>{u.phone}</span>}
                       <span style={{ marginInlineStart: 'auto' }}>{actions(u, 'volunteer')}</span>
                     </div>
                   </article>
@@ -273,6 +274,7 @@ export default function VolunteersPage() {
       )}
 
       <MailSettingsCard />
+      <TzintukSettingsCard />
 
       {editing && (
         <UserForm
