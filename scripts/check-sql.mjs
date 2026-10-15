@@ -23,6 +23,7 @@ const SQL_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 's
 // Run order — keep in sync with supabase/README.md.
 const FILES = [
   'schema.sql',
+  'mothers.sql',
 ];
 
 const SUPABASE_STUBS = `
@@ -75,38 +76,72 @@ await db.exec(`
   grant all on all tables in schema public to anon, authenticated;
   insert into authorized_users (email, role, is_active) values
     ('admin@test.local', 'admin', true), ('vol@test.local', 'volunteer', true),
-    ('gone@test.local', 'volunteer', false);
+    ('gone@test.local', 'volunteer', false), ('vol2@test.local', 'volunteer', true);
+  insert into mothers (full_name, delivery_volunteer_id)
+    select 'משובצת', id from authorized_users where email = 'vol@test.local';
+  insert into mothers (full_name) values ('לא משובצת');
 `);
+const ASSIGNED   = `(select id from mothers where full_name = 'משובצת')`;
+const UNASSIGNED = `(select id from mothers where full_name = 'לא משובצת')`;
 
-/** Runs `sql` as `role` with the given JWT e-mail; returns the first cell, or 'denied'. */
+/**
+ * Runs `sql` as `role` with the given JWT e-mail, inside a transaction that
+ * is rolled back (so one check never changes the data for the next).
+ * Returns the first cell, 0 when there are no rows, or 'denied' on error.
+ */
 async function as(role, email, sql) {
   const claims = email ? JSON.stringify({ email }) : '';
-  await db.exec(`reset role; select set_config('request.jwt.claims', '${claims}', false); set role ${role};`);
+  await db.exec(`begin; select set_config('request.jwt.claims', '${claims}', true); set local role ${role};`);
   try {
     const r = await db.query(sql);
     return r.rows.length ? Object.values(r.rows[0])[0] : 0;
   } catch { return 'denied'; }
-  finally { await db.exec('reset role'); }
+  finally { await db.exec('rollback'); }
 }
 
+/** Number of rows a statement changed (via a writable CTE), or 'denied'. */
+const changed = (stmt) => `with x as (${stmt} returning 1) select count(*)::int from x`;
+
+const CHECKS = {
+  is_authorized:       'select public.is_authorized_user()',
+  is_admin:            'select public.is_admin_user()',
+  users_rows:          'select count(*)::int from authorized_users',
+  mothers_seen:        'select count(*)::int from mothers',
+  mother_insert:       changed(`insert into mothers (full_name) values ('חדשה')`),
+  mother_edit:         changed(`update mothers set notes = 'x'`),
+  mother_delete:       changed('delete from mothers'),
+  deliver_assigned:    `select 'ok' from public.set_delivery_status(${ASSIGNED}, 'delivered')`,
+  deliver_unassigned:  `select 'ok' from public.set_delivery_status(${UNASSIGNED}, 'delivered')`,
+  cancel_assigned:     `select 'ok' from public.set_delivery_status(${ASSIGNED}, 'cancelled')`,
+};
+
+const D = 'denied';
 const expect = [
-  // who,                 role,            email,                 authorized, admin, rows of authorized_users
-  ['not signed in',       'anon',          null,                  'denied', 'denied', 0],
-  ['outside Google acct', 'authenticated', 'someone@gmail.com',   false,    false,    0],
-  ['deactivated user',    'authenticated', 'gone@test.local',     false,    false,    0],
-  ['volunteer',           'authenticated', 'vol@test.local',      true,     false,    0],
-  ['admin (odd casing)',  'authenticated', ' Admin@Test.Local ',  true,     true,     0],
+  // who,                  role,            email,                 is_auth, is_admin, users, seen, ins, edit, del, deliver(a), deliver(u), cancel(a)
+  ['not signed in',        'anon',          null,                  D,     D,     0, 0, D, 0, 0, D,    D,    D],
+  ['outside Google acct',  'authenticated', 'someone@gmail.com',   false, false, 0, 0, D, 0, 0, D,    D,    D],
+  ['deactivated user',     'authenticated', 'gone@test.local',     false, false, 0, 0, D, 0, 0, D,    D,    D],
+  ['assigned volunteer',   'authenticated', 'vol@test.local',      true,  false, 0, 1, D, 0, 0, 'ok', D,    D],
+  ['other volunteer',      'authenticated', 'vol2@test.local',     true,  false, 0, 0, D, 0, 0, D,    D,    D],
+  ['admin (odd casing)',   'authenticated', ' Admin@Test.Local ',  true,  true,  0, 2, 1, 2, 2, 'ok', 'ok', 'ok'],
 ];
 console.log('Access matrix:');
 for (const [who, role, email, ...want] of expect) {
-  const got = [
-    await as(role, email, 'select public.is_authorized_user()'),
-    await as(role, email, 'select public.is_admin_user()'),
-    await as(role, email, 'select count(*)::int from authorized_users'),
-  ];
+  const got = [];
+  for (const sql of Object.values(CHECKS)) got.push(await as(role, email, sql));
   if (JSON.stringify(got) === JSON.stringify(want)) console.log(`  ✓ ${who}`);
-  else fail(`${who}: expected [is_authorized, is_admin, authorized_users rows] = ${JSON.stringify(want)}, got ${JSON.stringify(got)}`);
+  else fail(`${who}: [${Object.keys(CHECKS)}]
+      expected ${JSON.stringify(want)}
+      got      ${JSON.stringify(got)}`);
 }
+
+// delivered_at follows the status
+await db.exec(`update mothers set delivery_status = 'delivered' where full_name = 'משובצת'`);
+const d1 = (await db.query(`select delivered_at is not null as v from mothers where full_name = 'משובצת'`)).rows[0].v;
+await db.exec(`update mothers set delivery_status = 'out' where full_name = 'משובצת'`);
+const d2 = (await db.query(`select delivered_at is null as v from mothers where full_name = 'משובצת'`)).rows[0].v;
+if (d1 && d2) console.log('  ✓ delivered_at is set on delivery and cleared when the status goes back');
+else fail('delivered_at does not follow delivery_status');
 
 await db.close();
 if (failed) { console.error('\ncheck:sql FAILED'); process.exit(1); }

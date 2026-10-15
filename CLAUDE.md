@@ -38,9 +38,21 @@ Follow the user's `build-standards` skill for every change. Project specifics:
 - New file → add to the README table **and** `FILES` in `scripts/check-sql.mjs`
   → `npm run check:sql`.
 
+## Data
+
+- `mothers` — one row per new mother incl. her one-time delivery (date,
+  status, `delivery_volunteer_id`). Volunteers read only rows assigned to
+  them and change status only via `set_delivery_status()` (out / delivered).
+- Browser access: `lib/mothersData.ts` (load/save/delete/status) and
+  `useMothers()` in `lib/useMothers.ts`. Dates: `lib/dates.ts` (Israel time).
+- Forms: `components/ui/Modal.tsx` + `components/ui/Field.tsx`.
+
 ## Checks before finishing
 
 `npx tsc --noEmit` · `npx eslint .` · `npm run check:sql` · `npm run build`
+
+After the user ran new SQL: `npm run check:live` — checks the access rules on
+the real Supabase project with temporary test accounts it deletes afterwards.
 
 ## Deploy
 

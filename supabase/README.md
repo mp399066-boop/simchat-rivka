@@ -8,6 +8,7 @@ by hand. Every file is therefore **idempotent** — safe to run again at any tim
 | # | File | What it adds |
 |---|------|--------------|
 | 1 | `schema.sql` | `authorized_users`, the access-check functions, the first admin |
+| 2 | `mothers.sql` | `mothers` (new mothers + their one-time delivery), `set_delivery_status()` |
 
 For an existing database, run only the new/changed file.
 

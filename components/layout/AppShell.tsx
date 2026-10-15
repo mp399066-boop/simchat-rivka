@@ -31,13 +31,15 @@ type Access =
 /* ── Navigation ──────────────────────────────────────────────────────────── */
 
 const icons = {
-  home:  'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z',
-  users: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+  home:    'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z',
+  mothers: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z',
+  users:   'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
 } as const;
 
-const navItems: { href: string; label: string; icon: keyof typeof icons; adminOnly?: boolean }[] = [
-  { href: '/',      label: 'בית',       icon: 'home' },
-  { href: '/users', label: 'משתמשות',   icon: 'users', adminOnly: true },
+const navItems: { href: string; label: string; volunteerLabel?: string; icon: keyof typeof icons; adminOnly?: boolean }[] = [
+  { href: '/',        label: 'בית',       icon: 'home' },
+  { href: '/mothers', label: 'יולדות',    volunteerLabel: 'המשלוחים שלי', icon: 'mothers' },
+  { href: '/users',   label: 'משתמשות',   icon: 'users', adminOnly: true },
 ];
 
 function Icon({ name, size = 22 }: { name: keyof typeof icons; size?: number }) {
@@ -109,7 +111,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   const { me } = access;
   const isAdmin = me.role === 'admin';
-  const items = navItems.filter(i => !i.adminOnly || isAdmin);
+  const items = navItems
+    .filter(i => !i.adminOnly || isAdmin)
+    .map(i => ({ ...i, label: !isAdmin && i.volunteerLabel ? i.volunteerLabel : i.label }));
   const onAdminOnlyPage = navItems.some(i => i.adminOnly && pathname?.startsWith(i.href));
   const isActive = (href: string) => href === '/' ? pathname === '/' : !!pathname?.startsWith(href);
 
