@@ -45,7 +45,16 @@ Follow the user's `build-standards` skill for every change. Project specifics:
   them and change status only via `set_delivery_status()` (out / delivered).
 - Browser access: `lib/mothersData.ts` (load/save/delete/status) and
   `useMothers()` in `lib/useMothers.ts`. Dates: `lib/dates.ts` (Israel time).
-- Forms: `components/ui/Modal.tsx` + `components/ui/Field.tsx`.
+- `menu_items` — the fixed menu (per_meal) and stock. A trigger takes one meal
+  off the stock when a mother's status becomes ready/out/delivered and gives
+  it back when it goes back (`mothers.stock_used` makes it count once).
+  Planning: `lib/menu.ts`; browser access: `lib/menuData.ts`.
+- Forms: `components/ui/Modal.tsx` + `components/ui/Field.tsx`. Dates:
+  `components/ui/DateInput.tsx` (Hebrew day/month/year selects; Hebrew→Gregorian
+  in `lib/hebrewCalendar.ts`). Every date shown carries the Hebrew date.
+- Look: `PageHero` banner on each page, `card` / `tile` / `buttonStyle` from
+  `lib/theme.ts`, icons in `components/ui/Icon.tsx`, `IconButton`.
+- Printing: `.no-print` hides an element on paper (globals.css); /print = day sheet.
 
 ## Checks before finishing
 

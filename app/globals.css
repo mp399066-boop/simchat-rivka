@@ -50,6 +50,14 @@ button:disabled { opacity: 0.6; cursor: default; }
   .hero-action { position: static; transform: none; margin-top: 6px; }
 }
 
+/* ── Printing: only the page content, plain ── */
+@media print {
+  .no-print, .hero { display: none !important; }
+  body { background: #FFFFFF !important; }
+  .app-main { padding: 0 !important; max-width: none !important; }
+  article, section { box-shadow: none !important; break-inside: avoid; }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }

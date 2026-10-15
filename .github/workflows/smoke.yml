@@ -32,6 +32,7 @@ jobs:
           check /auth/callback        307 "error=missing_code"
           check "/auth/callback?code=x" 307 "error=auth_callback_failed"
           check /mothers              307 "/login?next=%2Fmothers"
+          check /menu                 307 "/login?next=%2Fmenu"
           check /icon.png             200
           exit $fail
 

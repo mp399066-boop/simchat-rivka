@@ -168,6 +168,7 @@ export default function MothersPage() {
         <MotherForm
           mother={editing === 'new' ? undefined : editing}
           team={data.team}
+          others={data.mothers}
           onSubmit={save}
           onClose={() => setEditing(null)}
         />

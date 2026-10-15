@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import Icon from '@/components/ui/Icon';
+import IconButton from '@/components/ui/IconButton';
 import { gregorianDate, hebrewDate, relativeDay } from '@/lib/dates';
 import {
   DELIVERY_STATUSES, fullAddress, isOpen, STATUS_COLORS, STATUS_LABELS, telLink, wazeLink,
@@ -139,19 +140,5 @@ function Line({ icon, children }: { icon: 'pin' | 'phone' | 'edit'; children: Re
       <span style={{ color: C.accent, marginTop: 2 }}><Icon name={icon} size={17} /></span>
       <span style={{ minWidth: 0 }}>{children}</span>
     </div>
-  );
-}
-
-function IconButton({ label, icon, onClick, danger }: {
-  label: string; icon: 'edit' | 'trash'; onClick?: () => void; danger?: boolean;
-}) {
-  return (
-    <button onClick={onClick} title={label} aria-label={label} style={{
-      width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      backgroundColor: danger ? C.dangerSub : C.tile, color: danger ? C.danger : C.sub,
-    }}>
-      <Icon name={icon} size={18} />
-    </button>
   );
 }

@@ -118,6 +118,12 @@ function DayList({ title, date, mothers, today, names }: {
           marginInlineStart: 'auto', fontSize: 14, fontWeight: 800, padding: '3px 12px', borderRadius: 999,
           backgroundColor: C.accentSub, color: C.accent,
         }}>{mothers.length}</span>
+        <Link href="/print" title="דף משלוחים להדפסה" aria-label="דף משלוחים להדפסה" style={{
+          width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          backgroundColor: C.tile, color: C.sub,
+        }}>
+          <Icon name="printer" size={18} />
+        </Link>
       </h2>
       {mothers.length === 0 ? (
         <p style={{ margin: 0, color: C.muted, fontSize: 15 }}>אין משלוחים</p>

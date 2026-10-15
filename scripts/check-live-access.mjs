@@ -36,6 +36,12 @@ let failed = false;
 const ok = (cond, msg) => { console.log(cond ? '  ✓' : '  ✗', msg); if (!cond) failed = true; };
 
 const created = { authIds: [], userRowIds: [], motherIds: [] };
+let stockBefore = null;   // active menu stock before the run — restored and compared at the end
+
+async function stockNow() {
+  const { data } = await service.from('menu_items').select('id, stock, per_meal').eq('is_active', true).order('id');
+  return data ?? [];
+}
 
 async function signIn(email, password) {
   const client = createClient(url, anonKey, opts);
@@ -62,6 +68,8 @@ try {
     clients[key] = await signIn(p.email, password);
   }
 
+  stockBefore = await stockNow();
+
   // ── Manager ───────────────────────────────────────────────────────────────
   console.log('Manager:');
   const { data: m1, error: e1 } = await clients.admin.from('mothers')
@@ -76,6 +84,8 @@ try {
   const { error: s1 } = await clients.admin.rpc('set_delivery_status', { p_mother_id: m2?.id, p_status: 'ready' });
   ok(!s1, 'changes any delivery status');
 
+  const beforeDelivery = await stockNow();
+
   // ── Assigned volunteer ────────────────────────────────────────────────────
   console.log('Assigned volunteer:');
   const { data: seen } = await clients.volunteer.from('mothers').select('id').in('id', created.motherIds);
@@ -86,6 +96,13 @@ try {
   ok(!!vIns, 'cannot add mothers');
   const { error: vOut } = await clients.volunteer.rpc('set_delivery_status', { p_mother_id: m1?.id, p_status: 'delivered' });
   ok(!vOut, 'marks her delivery as delivered');
+  const stockAfter = await stockNow();
+  ok(beforeDelivery.length > 0 && beforeDelivery.every((b, i) => stockAfter[i]?.stock === b.stock - b.per_meal),
+    'delivering took one meal off the stock (every active menu item)');
+  const { data: vMenu } = await clients.volunteer.from('menu_items').select('id');
+  ok((vMenu?.length ?? 0) > 0, 'reads the menu');
+  const { data: vMenuEdit } = await clients.volunteer.from('menu_items').update({ stock: 999 }).eq('is_active', true).select('id');
+  ok(!vMenuEdit?.length, 'cannot change the menu or the stock');
   const { error: vCancel } = await clients.volunteer.rpc('set_delivery_status', { p_mother_id: m1?.id, p_status: 'cancelled' });
   ok(!!vCancel, 'cannot cancel a delivery');
   const { error: vOther } = await clients.volunteer.rpc('set_delivery_status', { p_mother_id: m2?.id, p_status: 'delivered' });
@@ -109,6 +126,8 @@ try {
 } finally {
   // ── Cleanup — always ──────────────────────────────────────────────────────
   if (created.motherIds.length) {
+    // Back to "planned" first, so the trigger returns any stock the test used.
+    await service.from('mothers').update({ delivery_status: 'planned' }).in('id', created.motherIds);
     const { error } = await service.from('mothers').delete().in('id', created.motherIds);
     if (error) console.error('  ! cleanup mothers failed:', error.message);
   }
@@ -119,6 +138,10 @@ try {
   for (const id of created.authIds) {
     const { error } = await service.auth.admin.deleteUser(id);
     if (error) console.error('  ! cleanup auth user failed:', error.message);
+  }
+  if (stockBefore) {
+    const { data: final } = await service.from('menu_items').select('id, stock').eq('is_active', true).order('id');
+    ok(JSON.stringify(final?.map(r => r.stock)) === JSON.stringify(stockBefore.map(r => r.stock)), 'stock is back to exactly what it was');
   }
   const { data: left } = await service.from('authorized_users').select('id').like('email', '%@check.simchat-rivka.test');
   console.log(left?.length ? `  ! ${left.length} test rows left behind` : 'Cleanup: all test data removed');

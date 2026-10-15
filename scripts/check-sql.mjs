@@ -24,6 +24,7 @@ const SQL_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 's
 const FILES = [
   'schema.sql',
   'mothers.sql',
+  'menu.sql',
 ];
 
 const SUPABASE_STUBS = `
@@ -51,6 +52,10 @@ for (const round of [1, 2]) {
     catch (e) { fail(`${f}: ${e.message}`); }
   }
 }
+
+const menu = await db.query(`select count(*)::int as n from menu_items`);
+if (menu.rows[0].n === 7) console.log('  ✓ the fixed menu (7 items) seeded once after two runs');
+else fail(`expected 7 menu items after two runs, got ${menu.rows[0].n}`);
 
 const admins = await db.query(`select count(*)::int as n from authorized_users where role = 'admin'`);
 if (admins.rows[0].n === 1) console.log('  ✓ exactly one seeded admin after two runs');
@@ -113,17 +118,19 @@ const CHECKS = {
   deliver_assigned:    `select 'ok' from public.set_delivery_status(${ASSIGNED}, 'delivered')`,
   deliver_unassigned:  `select 'ok' from public.set_delivery_status(${UNASSIGNED}, 'delivered')`,
   cancel_assigned:     `select 'ok' from public.set_delivery_status(${ASSIGNED}, 'cancelled')`,
+  menu_seen:           'select count(*)::int from menu_items',
+  menu_edit:           changed('update menu_items set stock = 5'),
 };
 
 const D = 'denied';
 const expect = [
-  // who,                  role,            email,                 is_auth, is_admin, users, seen, ins, edit, del, deliver(a), deliver(u), cancel(a)
-  ['not signed in',        'anon',          null,                  D,     D,     0, 0, D, 0, 0, D,    D,    D],
-  ['outside Google acct',  'authenticated', 'someone@gmail.com',   false, false, 0, 0, D, 0, 0, D,    D,    D],
-  ['deactivated user',     'authenticated', 'gone@test.local',     false, false, 0, 0, D, 0, 0, D,    D,    D],
-  ['assigned volunteer',   'authenticated', 'vol@test.local',      true,  false, 0, 1, D, 0, 0, 'ok', D,    D],
-  ['other volunteer',      'authenticated', 'vol2@test.local',     true,  false, 0, 0, D, 0, 0, D,    D,    D],
-  ['admin (odd casing)',   'authenticated', ' Admin@Test.Local ',  true,  true,  0, 2, 1, 2, 2, 'ok', 'ok', 'ok'],
+  // who,                  role,            email,                 is_auth, is_admin, users, seen, ins, edit, del, deliver(a), deliver(u), cancel(a), menu seen, menu edit
+  ['not signed in',        'anon',          null,                  D,     D,     0, 0, D, 0, 0, D,    D,    D,    0, 0],
+  ['outside Google acct',  'authenticated', 'someone@gmail.com',   false, false, 0, 0, D, 0, 0, D,    D,    D,    0, 0],
+  ['deactivated user',     'authenticated', 'gone@test.local',     false, false, 0, 0, D, 0, 0, D,    D,    D,    0, 0],
+  ['assigned volunteer',   'authenticated', 'vol@test.local',      true,  false, 0, 1, D, 0, 0, 'ok', D,    D,    7, 0],
+  ['other volunteer',      'authenticated', 'vol2@test.local',     true,  false, 0, 0, D, 0, 0, D,    D,    D,    7, 0],
+  ['admin (odd casing)',   'authenticated', ' Admin@Test.Local ',  true,  true,  0, 2, 1, 2, 2, 'ok', 'ok', 'ok', 7, 7],
 ];
 console.log('Access matrix:');
 for (const [who, role, email, ...want] of expect) {
@@ -142,6 +149,24 @@ await db.exec(`update mothers set delivery_status = 'out' where full_name = 'מ�
 const d2 = (await db.query(`select delivered_at is null as v from mothers where full_name = 'משובצת'`)).rows[0].v;
 if (d1 && d2) console.log('  ✓ delivered_at is set on delivery and cleared when the status goes back');
 else fail('delivered_at does not follow delivery_status');
+
+// Stock: a packed meal takes its items off the stock exactly once, and gives
+// them back when the status goes back. The volunteer path (RPC) counts too.
+const stockOf = async () => (await db.query(`select stock from menu_items where name = 'פשטידה'`)).rows[0].stock;
+await db.exec(`update menu_items set stock = 10; update mothers set delivery_status = 'planned', stock_used = false`);
+const s0 = await stockOf();
+await db.exec(`update mothers set delivery_status = 'ready' where full_name = 'משובצת'`);
+const s1 = await stockOf();
+await db.exec(`update mothers set delivery_status = 'out' where full_name = 'משובצת'`);
+await db.exec(`update mothers set delivery_status = 'delivered' where full_name = 'משובצת'`);
+const s2 = await stockOf();
+await db.exec(`update mothers set delivery_status = 'planned' where full_name = 'משובצת'`);
+const s3 = await stockOf();
+await db.exec(`begin; select set_config('request.jwt.claims', '{"email":"vol@test.local"}', true); set local role authenticated;
+  select public.set_delivery_status(${ASSIGNED}, 'delivered'); commit;`);
+const s4 = await stockOf();
+if ([s0, s1, s2, s3, s4].join() === '10,8,8,10,8') console.log('  ✓ stock: -2 quiches when packed, once; back when unpacked; also via a volunteer');
+else fail(`stock sequence expected 10,8,8,10,8 got ${[s0, s1, s2, s3, s4]}`);
 
 await db.close();
 if (failed) { console.error('\ncheck:sql FAILED'); process.exit(1); }

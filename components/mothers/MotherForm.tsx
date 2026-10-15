@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import DateInput from '@/components/ui/DateInput';
 import Field from '@/components/ui/Field';
 import Modal from '@/components/ui/Modal';
-import { fullDate, hebrewDate, nextDeliveryDay, noDeliveryReason, shiftDate } from '@/lib/dates';
+import { fullDate, nextDeliveryDay, noDeliveryReason, shiftDate } from '@/lib/dates';
 import { DELIVERY_STATUSES, STATUS_LABELS, type Mother, type MotherInput } from '@/lib/mothers';
 import type { AuthorizedUser } from '@/lib/users';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
@@ -45,9 +46,11 @@ const toValues = (m?: Mother): Values => ({
 });
 
 /** Add / edit a mother and her delivery (manager only). */
-export default function MotherForm({ mother, team, onSubmit, onClose }: {
+export default function MotherForm({ mother, team, others, onSubmit, onClose }: {
   mother?: Mother;
   team: AuthorizedUser[];
+  /** All mothers — to warn about a phone number that is already listed. */
+  others: Mother[];
   onSubmit: (input: MotherInput) => Promise<boolean>;
   onClose: () => void;
 }) {
@@ -65,6 +68,14 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
   const planned = plan !== 'custom' && values.birth_date ? plannedDate(values.birth_date, plan) : null;
   const deliveryDate = plan === 'custom' ? values.delivery_date : planned?.date ?? '';
   const customWarning = plan === 'custom' && values.delivery_date ? noDeliveryReason(values.delivery_date) : null;
+
+  const setField = (field: keyof Values) => (v: string) => setValues(old => ({ ...old, [field]: v }));
+
+  // Same phone already listed (another mother)?
+  const phoneDigits = values.phone.replace(/D/g, '');
+  const duplicate = phoneDigits.length >= 9
+    ? others.find(o => o.id !== mother?.id && o.phone?.replace(/D/g, '') === phoneDigits)
+    : undefined;
 
   // Active users, plus the currently assigned one even if she was paused.
   const choices = team.filter(u => u.is_active || u.id === mother?.delivery_volunteer_id);
@@ -112,10 +123,18 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
         <Field label="טלפון">
           <input {...bind('phone')} type="tel" dir="ltr" maxLength={30} style={{ ...inputStyle, textAlign: 'right' }} />
         </Field>
-        <Field label="תאריך לידה" hint={values.birth_date ? hebrewDate(values.birth_date, true) : undefined}>
-          <input {...bind('birth_date')} type="date" style={inputStyle} />
-        </Field>
       </div>
+      {duplicate && (
+        <div role="alert" style={{
+          padding: '10px 14px', borderRadius: 14, fontSize: 14, fontWeight: 600,
+          backgroundColor: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A',
+        }}>
+          שימי לב: הטלפון הזה כבר רשום אצל {duplicate.full_name}
+        </div>
+      )}
+      <Field label="תאריך לידה">
+        <DateInput label="תאריך לידה" value={values.birth_date} onChange={setField('birth_date')} />
+      </Field>
       <div style={row}>
         <Field label="רחוב ומספר">
           <input {...bind('address')} maxLength={200} style={inputStyle} />
@@ -151,10 +170,8 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
         }}>
           {plan === 'custom' ? (
             <>
-              <input {...bind('delivery_date')} type="date" aria-label="תאריך משלוח" style={inputStyle} />
-              <div style={{ marginTop: 6 }}>
-                {values.delivery_date ? fullDate(values.delivery_date) : 'אפשר להשאיר ריק עד שייקבע'}
-              </div>
+              <DateInput label="תאריך משלוח" value={values.delivery_date} onChange={setField('delivery_date')} />
+              {!values.delivery_date && <div style={{ marginTop: 6 }}>אפשר להשאיר ריק עד שייקבע</div>}
               {customWarning && <div style={{ marginTop: 4, color: C.danger, fontWeight: 600 }}>שימי לב: זה {customWarning}</div>}
             </>
           ) : planned ? (

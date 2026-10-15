@@ -12,6 +12,7 @@ export interface Mother {
   delivery_status: DeliveryStatus;
   delivery_volunteer_id: string | null;
   delivered_at: string | null;
+  stock_used: boolean;             // the meal's items were taken off the stock
   created_at: string;
   updated_at: string;
 }

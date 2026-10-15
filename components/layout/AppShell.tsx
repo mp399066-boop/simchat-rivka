@@ -34,6 +34,7 @@ type Access =
 const navItems: { href: string; label: string; volunteerLabel?: string; icon: IconName; adminOnly?: boolean }[] = [
   { href: '/',        label: 'בית',       icon: 'home' },
   { href: '/mothers', label: 'יולדות',    volunteerLabel: 'המשלוחים שלי', icon: 'heart' },
+  { href: '/menu',    label: 'תפריט ומלאי', icon: 'list',  adminOnly: true },
   { href: '/users',   label: 'משתמשות',   icon: 'users', adminOnly: true },
 ];
 
@@ -108,7 +109,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
         {/* Floating top bar */}
-        <header style={{ position: 'sticky', top: 0, zIndex: 30, padding: '12px 12px 0' }}>
+        <header className="no-print" style={{ position: 'sticky', top: 0, zIndex: 30, padding: '12px 12px 0' }}>
           <div style={{
             maxWidth: 1180, margin: '0 auto', padding: '8px 10px 8px 12px', minHeight: 64,
             display: 'flex', alignItems: 'center', gap: 12, borderRadius: 999,
@@ -167,7 +168,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </main>
 
         {/* Mobile navigation — floating tab bar */}
-        <nav className="nav-mobile" style={{
+        <nav className="nav-mobile no-print" style={{
           position: 'fixed', left: 12, right: 12, bottom: 'calc(10px + env(safe-area-inset-bottom))', zIndex: 30,
           height: 66, padding: 6, gap: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.96)',
           backdropFilter: 'blur(10px)', border: `1px solid ${C.border}`, boxShadow: '0 10px 30px rgba(110,11,53,0.14)',
