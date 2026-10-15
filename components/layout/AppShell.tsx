@@ -34,12 +34,13 @@ type Access =
 const navItems: { href: string; label: string; volunteerLabel?: string; icon: IconName; adminOnly?: boolean }[] = [
   { href: '/',        label: 'בית',       icon: 'home' },
   { href: '/mothers', label: 'יולדות',    volunteerLabel: 'המשלוחים שלי', icon: 'heart' },
+  { href: '/prep',    label: 'הכנות',     volunteerLabel: 'ההכנות שלי', icon: 'chef' },
   { href: '/menu',    label: 'תפריט ומלאי', icon: 'list',  adminOnly: true },
   { href: '/users',   label: 'משתמשות',   icon: 'users', adminOnly: true },
 ];
 
 /** Pages shown without the shell (and without the access check). */
-const isBarePath = (p: string | null) => p === '/login' || !!p?.startsWith('/auth/');
+const isBarePath = (p: string | null) => p === '/login' || p === '/confirm' || !!p?.startsWith('/auth/');
 
 /* ── Shell ───────────────────────────────────────────────────────────────── */
 

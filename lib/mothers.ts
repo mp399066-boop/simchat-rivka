@@ -3,6 +3,7 @@ export interface Mother {
   id: string;
   full_name: string;
   phone: string | null;
+  email: string | null;            // for the reminder the day before
   address: string | null;
   city: string | null;
   address_notes: string | null;
@@ -13,6 +14,10 @@ export interface Mother {
   delivery_volunteer_id: string | null;
   delivered_at: string | null;
   stock_used: boolean;             // the meal's items were taken off the stock
+  reminder_sent_at: string | null; // when the reminder e-mail went out
+  confirmed_at: string | null;     // when she answered the reminder
+  confirm_response: 'ok' | 'change' | null;
+  confirm_note: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -46,7 +51,7 @@ export const isOpen = (m: Pick<Mother, 'delivery_status'>) =>
 
 /** The editable fields, as the form sends them. */
 export type MotherInput = Pick<Mother,
-  'full_name' | 'phone' | 'address' | 'city' | 'address_notes' | 'birth_date' | 'notes'
+  'full_name' | 'phone' | 'email' | 'address' | 'city' | 'address_notes' | 'birth_date' | 'notes'
   | 'delivery_date' | 'delivery_status' | 'delivery_volunteer_id'>;
 
 /** Full address in one line, for display and for navigation apps. */
@@ -62,3 +67,11 @@ export function wazeLink(m: Pick<Mother, 'address' | 'city'>): string | null {
 
 /** tel: link (digits and + only). */
 export const telLink = (phone: string) => `tel:${phone.replace(/[^\d+]/g, '')}`;
+
+/** What the mother answered to the reminder, for display. */
+export function confirmationLabel(m: Pick<Mother, 'reminder_sent_at' | 'confirm_response'>): { text: string; tone: 'ok' | 'warn' | 'wait' } | null {
+  if (m.confirm_response === 'ok') return { text: 'אישרה ✓', tone: 'ok' };
+  if (m.confirm_response === 'change') return { text: 'ביקשה שינוי', tone: 'warn' };
+  if (m.reminder_sent_at) return { text: 'נשלחה תזכורת', tone: 'wait' };
+  return null;
+}

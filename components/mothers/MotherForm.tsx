@@ -35,6 +35,7 @@ function detectPlan(m?: Mother): Plan {
 const toValues = (m?: Mother): Values => ({
   full_name:             m?.full_name ?? '',
   phone:                 m?.phone ?? '',
+  email:                 m?.email ?? '',
   address:               m?.address ?? '',
   city:                  m?.city ?? '',
   address_notes:         m?.address_notes ?? '',
@@ -82,12 +83,15 @@ export default function MotherForm({ mother, team, others, onSubmit, onClose }: 
 
   async function handleSubmit() {
     if (!values.full_name.trim()) { setError('יש למלא את שם היולדת'); return; }
+    const email = values.email.trim().toLowerCase();
+    if (email && !/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) { setError('כתובת המייל אינה תקינה'); return; }
     setError(null);
     setSaving(true);
     const t = (s: string) => s.trim() || null;
     const ok = await onSubmit({
       full_name:             values.full_name.trim(),
       phone:                 t(values.phone),
+      email:                 email || null,
       address:               t(values.address),
       city:                  t(values.city),
       address_notes:         t(values.address_notes),
@@ -124,6 +128,9 @@ export default function MotherForm({ mother, team, others, onSubmit, onClose }: 
           <input {...bind('phone')} type="tel" dir="ltr" maxLength={30} style={{ ...inputStyle, textAlign: 'right' }} />
         </Field>
       </div>
+      <Field label="מייל" hint="אם יש – יום לפני המשלוח תישלח אליה תזכורת עם כפתור אישור">
+        <input {...bind('email')} type="email" dir="ltr" maxLength={200} style={{ ...inputStyle, textAlign: 'left' }} />
+      </Field>
       {duplicate && (
         <div role="alert" style={{
           padding: '10px 14px', borderRadius: 14, fontSize: 14, fontWeight: 600,

@@ -6,6 +6,7 @@ import { useFeedback } from '@/components/ui/Feedback';
 import Icon from '@/components/ui/Icon';
 import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
+import MailSettingsCard from '@/components/users/MailSettingsCard';
 import UserForm, { type UserFormValues } from '@/components/users/UserForm';
 import { authFetch } from '@/lib/supabase';
 import { ROLE_LABELS, type AuthorizedUser } from '@/lib/users';
@@ -92,6 +93,8 @@ export default function UsersPage() {
           </button>
         }
       />
+
+      <MailSettingsCard />
 
       {load.state === 'loading' && <StatusMessage title="טוען..." />}
       {load.state === 'error' && (

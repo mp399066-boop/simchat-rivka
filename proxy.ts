@@ -70,6 +70,7 @@ export async function proxy(request: NextRequest) {
 
 function isPublicPath(path: string): boolean {
   return path === '/login'
+    || path === '/confirm'          // the mother's reminder link (secret token, no login)
     || path.startsWith('/auth/')
     || path.startsWith('/api/');
 }

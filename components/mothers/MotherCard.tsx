@@ -5,7 +5,7 @@ import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
 import { gregorianDate, hebrewDate, relativeDay } from '@/lib/dates';
 import {
-  DELIVERY_STATUSES, fullAddress, isOpen, STATUS_COLORS, STATUS_LABELS, telLink, wazeLink,
+  confirmationLabel, DELIVERY_STATUSES, fullAddress, isOpen, STATUS_COLORS, STATUS_LABELS, telLink, wazeLink,
   type DeliveryStatus, type Mother,
 } from '@/lib/mothers';
 import { buttonStyle, card, colors as C, inputStyle, tile } from '@/lib/theme';
@@ -14,18 +14,24 @@ import { buttonStyle, card, colors as C, inputStyle, tile } from '@/lib/theme';
  * One mother + her delivery. The manager gets a status picker, edit and
  * delete; a volunteer gets "יצאתי" / "נמסר" buttons only.
  */
-export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, onStatus, onEdit, onDelete }: {
+export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, prep, onStatus, onEdit, onDelete, onPrep, onRemind }: {
   mother: Mother;
   volunteerName?: string | null;
   isAdmin: boolean;
   busy?: boolean;
+  /** Prep tasks done / total (manager). */
+  prep?: { done: number; total: number };
   onStatus: (status: DeliveryStatus) => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onPrep?: () => void;
+  onRemind?: () => void;
 }) {
   const address = fullAddress(m);
   const waze = wazeLink(m);
   const status = STATUS_COLORS[m.delivery_status];
+  const confirmation = confirmationLabel(m);
+  const CONFIRM_LOOK = { ok: { bg: '#DCFCE7', fg: '#166534' }, warn: { bg: '#FEF3C7', fg: '#92400E' }, wait: { bg: C.tile, fg: C.sub } };
 
   return (
     <article style={{ ...card, display: 'flex', flexDirection: 'column', gap: 14, opacity: isOpen(m) ? 1 : 0.8 }}>
@@ -45,6 +51,14 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, on
               ? <span>משלוח {relativeDay(m.delivery_date)} · {hebrewDate(m.delivery_date)} · {gregorianDate(m.delivery_date)}</span>
               : <span style={{ color: C.danger, fontWeight: 600 }}>עוד לא נקבע תאריך משלוח</span>}
           </div>
+          {isAdmin && confirmation && (
+            <span style={{
+              display: 'inline-block', marginTop: 6, fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+              backgroundColor: CONFIRM_LOOK[confirmation.tone].bg, color: CONFIRM_LOOK[confirmation.tone].fg,
+            }}>
+              {confirmation.text}
+            </span>
+          )}
         </div>
         <span style={{
           fontSize: 13, fontWeight: 800, padding: '6px 12px', borderRadius: 999, flexShrink: 0,
@@ -64,7 +78,7 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, on
       </div>
 
       {/* Address, phone, notes */}
-      {(address || m.phone || m.notes) && (
+      {(address || m.phone || m.notes || (isAdmin && (m.email || m.confirm_note))) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 15, color: C.text }}>
           {address && (
             <Line icon="pin">
@@ -72,6 +86,10 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, on
             </Line>
           )}
           {m.phone && <Line icon="phone"><span dir="ltr">{m.phone}</span></Line>}
+          {isAdmin && m.email && <Line icon="mail"><span dir="ltr">{m.email}</span></Line>}
+          {isAdmin && m.confirm_note && (
+            <Line icon="alert"><span style={{ color: '#92400E', fontWeight: 600 }}>היולדת כתבה: {m.confirm_note}</span></Line>
+          )}
           {m.notes && <Line icon="edit"><span style={{ color: C.sub, whiteSpace: 'pre-wrap' }}>{m.notes}</span></Line>}
         </div>
       )}
@@ -99,7 +117,18 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, on
             >
               {DELIVERY_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
+            {onPrep && isOpen(m) && (
+              <button onClick={onPrep} style={{
+                ...buttonStyle('secondary'),
+                ...(prep && prep.total && prep.done === prep.total ? { backgroundColor: C.successSub, color: C.success } : {}),
+              }}>
+                <Icon name="chef" size={17} />הכנות{prep?.total ? ` ${prep.done}/${prep.total}` : ''}
+              </button>
+            )}
             <span style={{ marginInlineStart: 'auto', display: 'flex', gap: 6 }}>
+              {onRemind && m.email && m.delivery_date && isOpen(m) && (
+                <IconButton label="שליחת תזכורת במייל" icon="mail" onClick={onRemind} />
+              )}
               <IconButton label="עריכה" icon="edit" onClick={onEdit} />
               <IconButton label="מחיקה" icon="trash" onClick={onDelete} danger />
             </span>
@@ -134,7 +163,7 @@ function Tile({ label, value, sub, warn }: { label: string; value: string; sub?:
   );
 }
 
-function Line({ icon, children }: { icon: 'pin' | 'phone' | 'edit'; children: ReactNode }) {
+function Line({ icon, children }: { icon: 'pin' | 'phone' | 'edit' | 'mail' | 'alert'; children: ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
       <span style={{ color: C.accent, marginTop: 2 }}><Icon name={icon} size={17} /></span>

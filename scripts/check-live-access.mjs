@@ -110,6 +110,26 @@ try {
   const { data: vUsers } = await clients.volunteer.from('authorized_users').select('id');
   ok(!vUsers?.length, 'cannot read the user list');
 
+  // ── Preparation tasks + confirmation tokens ───────────────────────────────
+  console.log('Preparation / reminders:');
+  const { data: item } = await service.from('menu_items').select('id').eq('is_active', true).limit(1).single();
+  const { data: task, error: tErr } = await clients.admin.from('prep_tasks')
+    // m2: still open (m1 was delivered above, and delivered meals drop out of my_prep_tasks).
+    .insert({ mother_id: m2?.id, menu_item_id: item?.id, assignee_id: PEOPLE.other.rowId }).select('id').single();
+  ok(!tErr && task, 'manager assigns a preparation task');
+  const { data: mine } = await clients.other.rpc('my_prep_tasks');
+  ok(mine?.some(t => t.task_id === task?.id) && !('address' in (mine?.[0] ?? {})), 'the assignee sees her task (without address/phone)');
+  const { error: ownDone } = await clients.other.rpc('set_prep_done', { p_task_id: task?.id, p_done: true });
+  ok(!ownDone, 'the assignee ticks her task');
+  const { error: foreignDone } = await clients.volunteer.rpc('set_prep_done', { p_task_id: task?.id, p_done: false });
+  ok(!!foreignDone, "another volunteer cannot tick someone else's task");
+  const { data: vTasks } = await clients.volunteer.from('prep_tasks').select('id').eq('id', task?.id);
+  ok(!vTasks?.length, "another volunteer does not see someone else's task");
+  await service.from('confirm_tokens').upsert({ mother_id: m1?.id }, { onConflict: 'mother_id' });
+  const { data: aTok } = await clients.admin.from('confirm_tokens').select('token');
+  const { data: vTok } = await clients.volunteer.from('confirm_tokens').select('token');
+  ok(!aTok?.length && !vTok?.length, 'confirmation tokens are hidden from everyone (server only)');
+
   // ── Others ────────────────────────────────────────────────────────────────
   console.log('Other volunteer / outsider / signed out:');
   const { data: oSeen } = await clients.other.from('mothers').select('id').in('id', created.motherIds);

@@ -8,9 +8,11 @@ import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
 import MotherCard from '@/components/mothers/MotherCard';
 import MotherForm from '@/components/mothers/MotherForm';
+import PrepDialog from '@/components/prep/PrepDialog';
 import { deleteMother, saveMother, setDeliveryStatus } from '@/lib/mothersData';
 import { isOpen, type DeliveryStatus, type Mother, type MotherInput } from '@/lib/mothers';
-import { teamNames, useMothers } from '@/lib/useMothers';
+import { prepProgress, teamNames, useMothers } from '@/lib/useMothers';
+import { authFetch } from '@/lib/supabase';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 type Tab = 'open' | 'done' | 'all';
@@ -39,9 +41,11 @@ export default function MothersPage() {
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<Mother | 'new' | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [prepFor, setPrepFor] = useState<Mother | null>(null);
 
   const mothers = useMemo(() => (data.state === 'ready' ? data.mothers : []), [data]);
   const names = useMemo(() => teamNames(data.state === 'ready' ? data.team : []), [data]);
+  const progress = useMemo(() => prepProgress(data.state === 'ready' ? data.prep : []), [data]);
 
   const counts = useMemo(() => ({
     open: mothers.filter(isOpen).length,
@@ -76,6 +80,24 @@ export default function MothersPage() {
     else {
       toast.success(status === 'delivered' ? 'סומן שנמסר. תודה!' : 'המצב עודכן');
       await reload();
+    }
+    setBusyId(null);
+  }
+
+  async function remind(m: Mother) {
+    const ok = await confirm({
+      title: 'שליחת תזכורת', confirmLabel: 'שליחה', danger: false,
+      message: `לשלוח עכשיו ל${m.full_name} מייל תזכורת עם כפתור אישור?`,
+    });
+    if (!ok) return;
+    setBusyId(m.id);
+    try {
+      const res = await authFetch('/api/reminders/send', { method: 'POST', body: JSON.stringify({ motherId: m.id }) });
+      const body = await res.json().catch(() => ({}));
+      if (res.ok) { toast.success('התזכורת נשלחה'); await reload(); }
+      else toast.error(typeof body.error === 'string' && res.status !== 401 ? body.error : 'השליחה נכשלה');
+    } catch {
+      toast.error('אין חיבור לאינטרנט');
     }
     setBusyId(null);
   }
@@ -159,9 +181,16 @@ export default function MothersPage() {
               onStatus={s => changeStatus(m, s)}
               onEdit={() => setEditing(m)}
               onDelete={() => remove(m)}
+              prep={isAdmin ? progress.get(m.id) : undefined}
+              onPrep={isAdmin ? () => setPrepFor(m) : undefined}
+              onRemind={isAdmin ? () => remind(m) : undefined}
             />
           ))}
         </div>
+      )}
+
+      {prepFor && data.state === 'ready' && (
+        <PrepDialog mother={prepFor} team={data.team} onClose={() => { setPrepFor(null); reload(); }} />
       )}
 
       {editing && data.state === 'ready' && (

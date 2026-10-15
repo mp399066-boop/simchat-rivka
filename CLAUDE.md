@@ -55,6 +55,16 @@ Follow the user's `build-standards` skill for every change. Project specifics:
 - Look: `PageHero` banner on each page, `card` / `tile` / `buttonStyle` from
   `lib/theme.ts`, icons in `components/ui/Icon.tsx`, `IconButton`.
 - Printing: `.no-print` hides an element on paper (globals.css); /print = day sheet.
+- `prep_tasks` — who prepares which menu item for which meal. Manager: the
+  dialog in `components/prep/PrepDialog.tsx` and /prep; a volunteer: /prep
+  ("ההכנות שלי") via `my_prep_tasks()` / `set_prep_done()` (`lib/prepData.ts`).
+- Reminders (`lib/reminders.ts`): the evening before (cron in vercel.json →
+  /api/cron/reminders, `CRON_SECRET`), e-mails go to the mother (with a
+  confirmation link), each volunteer and the managers. Gmail SMTP
+  (`lib/mail.ts`, env `GMAIL_USER` + `GMAIL_APP_PASSWORD`) — nothing is sent
+  until both are set. Cron failures e-mail the managers (`lib/cronAlert.ts`).
+- /confirm is PUBLIC: the mother answers via a secret token in
+  `confirm_tokens` (server only). Token "demo" = the manager's sample mail.
 
 ## Checks before finishing
 

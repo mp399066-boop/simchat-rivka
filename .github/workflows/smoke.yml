@@ -33,6 +33,10 @@ jobs:
           check "/auth/callback?code=x" 307 "error=auth_callback_failed"
           check /mothers              307 "/login?next=%2Fmothers"
           check /menu                 307 "/login?next=%2Fmenu"
+          check /prep                 307 "/login?next=%2Fprep"
+          check "/confirm?t=demo"     200
+          check /api/cron/reminders   401
+          check /api/reminders/test   401
           check /icon.png             200
           exit $fail
 

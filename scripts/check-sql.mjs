@@ -25,6 +25,7 @@ const FILES = [
   'schema.sql',
   'mothers.sql',
   'menu.sql',
+  'prep-and-reminders.sql',
 ];
 
 const SUPABASE_STUBS = `
@@ -85,9 +86,21 @@ await db.exec(`
   insert into mothers (full_name, delivery_volunteer_id)
     select 'משובצת', id from authorized_users where email = 'vol@test.local';
   insert into mothers (full_name) values ('לא משובצת');
+  -- prep: one task of the assigned mother goes to the OTHER volunteer (vol2), one is unassigned
+  insert into prep_tasks (mother_id, menu_item_id, assignee_id)
+    select m.id, i.id, u.id from mothers m, menu_items i, authorized_users u
+    where m.full_name = 'משובצת' and i.name = 'פשטידה' and u.email = 'vol2@test.local';
+  insert into prep_tasks (mother_id, menu_item_id)
+    select m.id, i.id from mothers m, menu_items i where m.full_name = 'משובצת' and i.name = 'מפיות';
+  insert into confirm_tokens (mother_id) select id from mothers;
 `);
-const ASSIGNED   = `(select id from mothers where full_name = 'משובצת')`;
-const UNASSIGNED = `(select id from mothers where full_name = 'לא משובצת')`;
+// IDs are looked up here, as the owner — a lookup inside a check would run
+// under the tested role, where RLS can hide the row and mask the result.
+const idOf = async sql => `'${(await db.query(sql)).rows[0].id}'::uuid`;
+const VOL2_TASK = await idOf(`select t.id from prep_tasks t join menu_items i on i.id = t.menu_item_id where i.name = 'פשטידה'`);
+const FREE_TASK = await idOf(`select t.id from prep_tasks t join menu_items i on i.id = t.menu_item_id where i.name = 'מפיות'`);
+const ASSIGNED   = await idOf(`select id from mothers where full_name = 'משובצת'`);
+const UNASSIGNED = await idOf(`select id from mothers where full_name = 'לא משובצת'`);
 
 /**
  * Runs `sql` as `role` with the given JWT e-mail, inside a transaction that
@@ -120,17 +133,22 @@ const CHECKS = {
   cancel_assigned:     `select 'ok' from public.set_delivery_status(${ASSIGNED}, 'cancelled')`,
   menu_seen:           'select count(*)::int from menu_items',
   menu_edit:           changed('update menu_items set stock = 5'),
+  prep_seen:           'select count(*)::int from prep_tasks',
+  my_prep:             'select count(*)::int from public.my_prep_tasks()',
+  prep_done_own:       `select 'ok' from public.set_prep_done(${VOL2_TASK}, true)`,
+  prep_done_free:      `select 'ok' from public.set_prep_done(${FREE_TASK}, true)`,
+  tokens_seen:         'select count(*)::int from confirm_tokens',
 };
 
 const D = 'denied';
 const expect = [
-  // who,                  role,            email,                 is_auth, is_admin, users, seen, ins, edit, del, deliver(a), deliver(u), cancel(a), menu seen, menu edit
-  ['not signed in',        'anon',          null,                  D,     D,     0, 0, D, 0, 0, D,    D,    D,    0, 0],
-  ['outside Google acct',  'authenticated', 'someone@gmail.com',   false, false, 0, 0, D, 0, 0, D,    D,    D,    0, 0],
-  ['deactivated user',     'authenticated', 'gone@test.local',     false, false, 0, 0, D, 0, 0, D,    D,    D,    0, 0],
-  ['assigned volunteer',   'authenticated', 'vol@test.local',      true,  false, 0, 1, D, 0, 0, 'ok', D,    D,    7, 0],
-  ['other volunteer',      'authenticated', 'vol2@test.local',     true,  false, 0, 0, D, 0, 0, D,    D,    D,    7, 0],
-  ['admin (odd casing)',   'authenticated', ' Admin@Test.Local ',  true,  true,  0, 2, 1, 2, 2, 'ok', 'ok', 'ok', 7, 7],
+  // who,                  role,            email,                 is_auth, is_admin, users, seen, ins, edit, del, deliver(a), deliver(u), cancel(a), menu seen, menu edit, prep seen, my prep, done own, done free, tokens
+  ['not signed in',        'anon',          null,                  D,     D,     0, 0, D, 0, 0, D,    D,    D,    0, 0, 0, D, D,    D,    0],
+  ['outside Google acct',  'authenticated', 'someone@gmail.com',   false, false, 0, 0, D, 0, 0, D,    D,    D,    0, 0, 0, 0, D,    D,    0],
+  ['deactivated user',     'authenticated', 'gone@test.local',     false, false, 0, 0, D, 0, 0, D,    D,    D,    0, 0, 0, 0, D,    D,    0],
+  ['assigned volunteer',   'authenticated', 'vol@test.local',      true,  false, 0, 1, D, 0, 0, 'ok', D,    D,    7, 0, 0, 0, D,    D,    0],
+  ['prep volunteer',       'authenticated', 'vol2@test.local',     true,  false, 0, 0, D, 0, 0, D,    D,    D,    7, 0, 1, 1, 'ok', D,    0],
+  ['admin (odd casing)',   'authenticated', ' Admin@Test.Local ',  true,  true,  0, 2, 1, 2, 2, 'ok', 'ok', 'ok', 7, 7, 2, 0, 'ok', 'ok', 0],
 ];
 console.log('Access matrix:');
 for (const [who, role, email, ...want] of expect) {
@@ -149,6 +167,13 @@ await db.exec(`update mothers set delivery_status = 'out' where full_name = 'מ�
 const d2 = (await db.query(`select delivered_at is null as v from mothers where full_name = 'משובצת'`)).rows[0].v;
 if (d1 && d2) console.log('  ✓ delivered_at is set on delivery and cleared when the status goes back');
 else fail('delivered_at does not follow delivery_status');
+
+// A new delivery date clears the reminder and the confirmation.
+await db.exec(`update mothers set delivery_date = '2030-01-01', reminder_sent_at = now(), confirmed_at = now(), confirm_response = 'ok' where full_name = 'משובצת'`);
+await db.exec(`update mothers set delivery_date = '2030-01-02' where full_name = 'משובצת'`);
+const reset = (await db.query(`select reminder_sent_at is null and confirmed_at is null and confirm_response is null as v from mothers where full_name = 'משובצת'`)).rows[0].v;
+if (reset) console.log('  ✓ changing the delivery date clears the reminder and the confirmation');
+else fail('reminder/confirmation not cleared on a new delivery date');
 
 // Stock: a packed meal takes its items off the stock exactly once, and gives
 // them back when the status goes back. The volunteer path (RPC) counts too.

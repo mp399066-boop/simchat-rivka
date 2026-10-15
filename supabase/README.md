@@ -10,6 +10,7 @@ by hand. Every file is therefore **idempotent** — safe to run again at any tim
 | 1 | `schema.sql` | `authorized_users`, the access-check functions, the first admin |
 | 2 | `mothers.sql` | `mothers` (new mothers + their one-time delivery), `set_delivery_status()` |
 | 3 | `menu.sql` | `menu_items` (fixed menu + stock), automatic stock use when a meal is packed |
+| 4 | `prep-and-reminders.sql` | `prep_tasks` (who prepares what), mother e-mail + reminder/confirmation, `confirm_tokens` |
 
 For an existing database, run only the new/changed file.
 
