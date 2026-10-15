@@ -3,11 +3,33 @@
 import { useState } from 'react';
 import Field from '@/components/ui/Field';
 import Modal from '@/components/ui/Modal';
+import { fullDate, hebrewDate, nextDeliveryDay, noDeliveryReason, shiftDate } from '@/lib/dates';
 import { DELIVERY_STATUSES, STATUS_LABELS, type Mother, type MotherInput } from '@/lib/mothers';
 import type { AuthorizedUser } from '@/lib/users';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 type Values = Record<Exclude<keyof MotherInput, 'delivery_status'>, string> & Pick<MotherInput, 'delivery_status'>;
+
+/** How the delivery date is chosen: a week / two weeks after the birth, or by hand. */
+type Plan = 'week' | 'twoWeeks' | 'custom';
+const PLAN_DAYS: Record<Exclude<Plan, 'custom'>, number> = { week: 7, twoWeeks: 14 };
+
+/** Delivery date for a plan: N days after the birth, moved off שבת / יום טוב. */
+function plannedDate(birth: string, plan: Exclude<Plan, 'custom'>) {
+  const raw = shiftDate(birth, PLAN_DAYS[plan]);
+  const date = nextDeliveryDay(raw);
+  return { date, movedFrom: date !== raw ? noDeliveryReason(raw) : null };
+}
+
+/** Which plan an existing delivery date matches (or 'custom'). */
+function detectPlan(m?: Mother): Plan {
+  if (!m?.delivery_date) return 'week';
+  if (m.birth_date) {
+    if (plannedDate(m.birth_date, 'week').date === m.delivery_date) return 'week';
+    if (plannedDate(m.birth_date, 'twoWeeks').date === m.delivery_date) return 'twoWeeks';
+  }
+  return 'custom';
+}
 
 const toValues = (m?: Mother): Values => ({
   full_name:             m?.full_name ?? '',
@@ -22,23 +44,6 @@ const toValues = (m?: Mother): Values => ({
   delivery_volunteer_id: m?.delivery_volunteer_id ?? '',
 });
 
-/** Empty strings become null; text is trimmed. */
-const toInput = (v: Values): MotherInput => {
-  const t = (s: string) => s.trim() || null;
-  return {
-    full_name:             v.full_name.trim(),
-    phone:                 t(v.phone),
-    address:               t(v.address),
-    city:                  t(v.city),
-    address_notes:         t(v.address_notes),
-    birth_date:            v.birth_date || null,
-    notes:                 t(v.notes),
-    delivery_date:         v.delivery_date || null,
-    delivery_status:       v.delivery_status,
-    delivery_volunteer_id: v.delivery_volunteer_id || null,
-  };
-};
-
 /** Add / edit a mother and her delivery (manager only). */
 export default function MotherForm({ mother, team, onSubmit, onClose }: {
   mother?: Mother;
@@ -47,6 +52,7 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
   onClose: () => void;
 }) {
   const [values, setValues] = useState<Values>(() => toValues(mother));
+  const [plan, setPlan] = useState<Plan>(() => detectPlan(mother));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +61,11 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
     onChange: (e: { target: { value: string } }) => setValues(old => ({ ...old, [field]: e.target.value })),
   });
 
+  // The delivery date that will be saved.
+  const planned = plan !== 'custom' && values.birth_date ? plannedDate(values.birth_date, plan) : null;
+  const deliveryDate = plan === 'custom' ? values.delivery_date : planned?.date ?? '';
+  const customWarning = plan === 'custom' && values.delivery_date ? noDeliveryReason(values.delivery_date) : null;
+
   // Active users, plus the currently assigned one even if she was paused.
   const choices = team.filter(u => u.is_active || u.id === mother?.delivery_volunteer_id);
 
@@ -62,7 +73,19 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
     if (!values.full_name.trim()) { setError('יש למלא את שם היולדת'); return; }
     setError(null);
     setSaving(true);
-    const ok = await onSubmit(toInput(values));
+    const t = (s: string) => s.trim() || null;
+    const ok = await onSubmit({
+      full_name:             values.full_name.trim(),
+      phone:                 t(values.phone),
+      address:               t(values.address),
+      city:                  t(values.city),
+      address_notes:         t(values.address_notes),
+      birth_date:            values.birth_date || null,
+      notes:                 t(values.notes),
+      delivery_date:         deliveryDate || null,
+      delivery_status:       values.delivery_status,
+      delivery_volunteer_id: values.delivery_volunteer_id || null,
+    });
     setSaving(false);
     if (ok) onClose();
   }
@@ -75,7 +98,7 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
       busy={saving}
       onClose={onClose}
       onSubmit={handleSubmit}
-      maxWidth={560}
+      maxWidth={580}
       footer={<>
         <button type="submit" disabled={saving} style={buttonStyle('primary')}>{saving ? 'שומרת...' : 'שמירה'}</button>
         <button type="button" disabled={saving} onClick={onClose} style={buttonStyle('secondary')}>ביטול</button>
@@ -89,7 +112,7 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
         <Field label="טלפון">
           <input {...bind('phone')} type="tel" dir="ltr" maxLength={30} style={{ ...inputStyle, textAlign: 'right' }} />
         </Field>
-        <Field label="תאריך לידה">
+        <Field label="תאריך לידה" hint={values.birth_date ? hebrewDate(values.birth_date, true) : undefined}>
           <input {...bind('birth_date')} type="date" style={inputStyle} />
         </Field>
       </div>
@@ -106,9 +129,53 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
       </Field>
 
       <Section title="המשלוח" />
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: C.sub, marginBottom: 8 }}>מתי המשלוח?</div>
+        <div role="radiogroup" aria-label="מתי המשלוח" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {([['week', 'שבוע אחרי הלידה'], ['twoWeeks', 'שבועיים אחרי הלידה'], ['custom', 'תאריך אחר']] as const).map(([p, label]) => (
+            <button
+              key={p} type="button" role="radio" aria-checked={plan === p} onClick={() => setPlan(p)}
+              style={{
+                ...buttonStyle(plan === p ? 'primary' : 'secondary'), fontSize: 14, padding: '8px 14px',
+                boxShadow: 'none',
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{
+          marginTop: 10, padding: '12px 14px', borderRadius: 14, fontSize: 15,
+          backgroundColor: C.accentSub, color: C.deep, border: `1px solid ${C.accentRim}`,
+        }}>
+          {plan === 'custom' ? (
+            <>
+              <input {...bind('delivery_date')} type="date" aria-label="תאריך משלוח" style={inputStyle} />
+              <div style={{ marginTop: 6 }}>
+                {values.delivery_date ? fullDate(values.delivery_date) : 'אפשר להשאיר ריק עד שייקבע'}
+              </div>
+              {customWarning && <div style={{ marginTop: 4, color: C.danger, fontWeight: 600 }}>שימי לב: זה {customWarning}</div>}
+            </>
+          ) : planned ? (
+            <>
+              <strong>{fullDate(planned.date)}</strong>
+              {planned.movedFrom && <div style={{ fontSize: 13, marginTop: 4 }}>הוזז ליום הבא כי התאריך יצא ב{planned.movedFrom}</div>}
+            </>
+          ) : (
+            <span>התאריך יחושב לבד אחרי שתמלאי את תאריך הלידה</span>
+          )}
+        </div>
+      </div>
+
       <div style={row}>
-        <Field label="תאריך משלוח" hint="אפשר להשאיר ריק עד שייקבע">
-          <input {...bind('delivery_date')} type="date" style={inputStyle} />
+        <Field label="מי מוסרת" hint="המתנדבת תראה את היולדת הזו במערכת שלה">
+          <select {...bind('delivery_volunteer_id')} style={inputStyle}>
+            <option value="">עוד לא שובצה</option>
+            {choices.map(u => (
+              <option key={u.id} value={u.id}>{u.full_name || u.email}{u.is_active ? '' : ' (מושהית)'}</option>
+            ))}
+          </select>
         </Field>
         {mother && (
           <Field label="מצב">
@@ -118,14 +185,6 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
           </Field>
         )}
       </div>
-      <Field label="מי מוסרת" hint="המתנדבת תראה את היולדת הזו במערכת שלה">
-        <select {...bind('delivery_volunteer_id')} style={inputStyle}>
-          <option value="">עוד לא שובצה</option>
-          {choices.map(u => (
-            <option key={u.id} value={u.id}>{u.full_name || u.email}{u.is_active ? '' : ' (מושהית)'}</option>
-          ))}
-        </select>
-      </Field>
       <Field label="הערות">
         <textarea {...bind('notes')} rows={3} maxLength={2000} style={{ ...inputStyle, resize: 'vertical' }} />
       </Field>
@@ -136,5 +195,5 @@ export default function MotherForm({ mother, team, onSubmit, onClose }: {
 }
 
 function Section({ title }: { title: string }) {
-  return <div style={{ fontSize: 15, fontWeight: 700, color: C.accent, marginTop: 4 }}>{title}</div>;
+  return <div style={{ fontSize: 16, fontWeight: 800, color: C.accent, marginTop: 4 }}>{title}</div>;
 }

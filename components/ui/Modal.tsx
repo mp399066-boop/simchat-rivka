@@ -38,7 +38,7 @@ export default function Modal({ title, busy, onClose, onSubmit, children, footer
         noValidate
         style={{
           width: '100%', maxWidth, maxHeight: '100%', display: 'flex', flexDirection: 'column',
-          backgroundColor: C.card, borderRadius: 16, boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
+          backgroundColor: C.card, borderRadius: 24, boxShadow: '0 24px 64px rgba(0,0,0,0.18)',
           animation: 'fadeIn 0.15s ease-out', overflow: 'hidden',
         }}
       >

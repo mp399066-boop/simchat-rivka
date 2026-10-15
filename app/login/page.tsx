@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import Logo from '@/components/ui/Logo';
 import { isSupabaseConfigured, supabase } from '@/lib/supabase';
-import { colors as C } from '@/lib/theme';
+import { colors as C, heroGradient } from '@/lib/theme';
 
 const noSubscribe = () => () => {};
 
@@ -51,25 +51,37 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', backgroundColor: C.bg, display: 'flex',
-      alignItems: 'center', justifyContent: 'center', padding: 16,
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div style={{
-        backgroundColor: C.card, borderRadius: 18, border: `1px solid ${C.border}`,
-        boxShadow: '0 4px 24px rgba(60,20,40,0.08)', padding: '36px 24px',
-        width: '100%', maxWidth: 400, textAlign: 'center',
+        backgroundColor: C.card, borderRadius: 28, border: `1px solid ${C.border}`,
+        boxShadow: '0 24px 60px rgba(110,11,53,0.14)', overflow: 'hidden',
+        width: '100%', maxWidth: 420, textAlign: 'center',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
-          <Logo size={180} variant="full" />
+        {/* Berry banner with the logo */}
+        <div style={{ position: 'relative', background: heroGradient, padding: '28px 24px 70px', color: '#FFFFFF' }}>
+          <div aria-hidden style={{
+            position: 'absolute', width: 180, height: 180, borderRadius: '50%', left: -50, top: -80,
+            background: 'rgba(255,255,255,0.08)',
+          }} />
+          <div style={{ position: 'relative', fontSize: 15, fontWeight: 600, color: '#FFE9F2' }}>ברוכה הבאה ✨</div>
+          <h1 style={{ position: 'relative', margin: '6px 0 0', fontSize: 26, fontWeight: 800 }}>ניהול ארוחות ליולדות</h1>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: -58 }}>
+          <span style={{
+            width: 200, height: 200, borderRadius: '50%', backgroundColor: '#FFFFFF',
+            border: `6px solid ${C.accentSub}`, boxShadow: '0 10px 30px rgba(110,11,53,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative',
+          }}>
+            <Logo size={168} variant="full" />
+          </span>
         </div>
 
-        <p style={{ color: C.sub, fontSize: 16, margin: '0 0 28px' }}>
-          ניהול ארוחות ליולדות
-        </p>
+        <div style={{ padding: '22px 24px 28px' }}>
 
         {shownError && (
           <div role="alert" style={{
-            backgroundColor: C.dangerSub, border: '1px solid #FCA5A5', borderRadius: 10,
+            backgroundColor: C.dangerSub, border: '1px solid #FCA5A5', borderRadius: 14,
             padding: '10px 14px', color: C.danger, fontSize: 15, marginBottom: 20,
           }}>
             {shownError}
@@ -81,10 +93,10 @@ export default function LoginPage() {
           disabled={loading || !isSupabaseConfigured}
           style={{
             width: '100%', minHeight: 50, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: 10, padding: '12px 20px', borderRadius: 12, border: `1.5px solid ${C.border}`,
-            backgroundColor: C.card, color: C.text, fontSize: 16, fontWeight: 600, fontFamily: 'inherit',
+            gap: 10, padding: '12px 20px', borderRadius: 999, border: `1.5px solid ${C.border}`,
+            backgroundColor: C.card, color: C.text, fontSize: 16, fontWeight: 700, fontFamily: 'inherit',
             cursor: loading ? 'wait' : 'pointer', opacity: !isSupabaseConfigured ? 0.6 : 1,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            boxShadow: '0 6px 18px rgba(110,11,53,0.10)',
           }}
         >
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden>
@@ -99,6 +111,7 @@ export default function LoginPage() {
         <p style={{ color: C.muted, fontSize: 13, marginTop: 20 }}>
           הכניסה למורשות בלבד
         </p>
+        </div>
       </div>
     </div>
   );

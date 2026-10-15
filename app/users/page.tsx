@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useMe } from '@/components/layout/AppShell';
 import { useFeedback } from '@/components/ui/Feedback';
+import Icon from '@/components/ui/Icon';
+import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
 import UserForm, { type UserFormValues } from '@/components/users/UserForm';
 import { authFetch } from '@/lib/supabase';
 import { ROLE_LABELS, type AuthorizedUser } from '@/lib/users';
-import { buttonStyle, colors as C } from '@/lib/theme';
+import { buttonStyle, card, colors as C } from '@/lib/theme';
 
 type Load = { state: 'loading' } | { state: 'error' } | { state: 'ready'; users: AuthorizedUser[] };
 
@@ -80,16 +82,16 @@ export default function UsersPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>משתמשות</h1>
-          <p style={{ fontSize: 14, color: C.sub, margin: '4px 0 0' }}>
-            רק מי שמופיעה כאן יכולה להיכנס למערכת.
-          </p>
-        </div>
-        <button onClick={() => setEditing('new')} style={buttonStyle('primary')}>+ הוספת משתמשת</button>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <PageHero
+        title="משתמשות"
+        subtitle="רק מי שמופיעה כאן יכולה להיכנס למערכת"
+        action={
+          <button onClick={() => setEditing('new')} style={buttonStyle('light')}>
+            <Icon name="plus" size={18} />משתמשת חדשה
+          </button>
+        }
+      />
 
       {load.state === 'loading' && <StatusMessage title="טוען..." />}
       {load.state === 'error' && (
@@ -102,16 +104,21 @@ export default function UsersPage() {
       )}
 
       {load.state === 'ready' && load.users.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 440px), 1fr))', gap: 16 }}>
           {load.users.map(u => (
             <div key={u.id} style={{
-              backgroundColor: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16,
-              boxShadow: C.shadow, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+              ...card, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
               opacity: u.is_active ? 1 : 0.65,
             }}>
-              <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+              <span style={{
+                width: 50, height: 50, borderRadius: 16, flexShrink: 0, display: 'flex', alignItems: 'center',
+                justifyContent: 'center', backgroundColor: C.accentSub, color: C.accent,
+              }}>
+                <Icon name="user" size={24} />
+              </span>
+              <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{u.full_name || 'ללא שם'}</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: C.text }}>{u.full_name || 'ללא שם'}</span>
                   <Badge tone={u.role === 'admin' ? 'accent' : 'plain'}>{ROLE_LABELS[u.role]}</Badge>
                   {!u.is_active && <Badge tone="muted">מושהית</Badge>}
                   {isMe(u) && <Badge tone="plain">זו את</Badge>}
@@ -120,7 +127,10 @@ export default function UsersPage() {
                   {u.email}{u.phone ? ` · ${u.phone}` : ''}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{
+                display: 'flex', gap: 8, flexWrap: 'wrap', width: '100%',
+                paddingTop: 12, borderTop: `1px solid ${C.border}`,
+              }}>
                 <button onClick={() => setEditing(u)} style={buttonStyle('secondary')}>עריכה</button>
                 {!isMe(u) && (
                   <>
@@ -151,12 +161,12 @@ export default function UsersPage() {
 function Badge({ tone, children }: { tone: 'accent' | 'plain' | 'muted'; children: React.ReactNode }) {
   const look = {
     accent: { bg: C.accentSub, color: C.accent, border: C.accentRim },
-    plain:  { bg: '#F5F1F3',   color: C.sub,    border: C.border },
+    plain:  { bg: C.tile,      color: C.sub,    border: C.border },
     muted:  { bg: '#F3F4F6',   color: C.muted,  border: '#E5E7EB' },
   }[tone];
   return (
     <span style={{
-      fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 999,
+      fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
       backgroundColor: look.bg, color: look.color, border: `1px solid ${look.border}`,
     }}>
       {children}

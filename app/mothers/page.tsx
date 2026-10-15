@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { useMe } from '@/components/layout/AppShell';
 import { useFeedback } from '@/components/ui/Feedback';
+import Icon from '@/components/ui/Icon';
+import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
 import MotherCard from '@/components/mothers/MotherCard';
 import MotherForm from '@/components/mothers/MotherForm';
@@ -88,34 +90,46 @@ export default function MothersPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>
-          {isAdmin ? 'יולדות ומשלוחים' : 'המשלוחים שלי'}
-        </h1>
-        {isAdmin && <button onClick={() => setEditing('new')} style={buttonStyle('primary')}>+ יולדת חדשה</button>}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <PageHero
+        title={isAdmin ? 'יולדות ומשלוחים' : 'המשלוחים שלי'}
+        subtitle={isAdmin
+          ? 'כל היולדות, תאריכי המשלוח ומי מוסרת – במקום אחד'
+          : 'היולדות שאת מוסרת להן. אחרי המסירה לחצי "נמסר"'}
+        action={isAdmin && (
+          <button onClick={() => setEditing('new')} style={buttonStyle('light')}>
+            <Icon name="plus" size={18} />יולדת חדשה
+          </button>
+        )}
+      />
 
       {/* Tabs + search */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div role="tablist" style={{ display: 'flex', gap: 4, backgroundColor: '#F3EDF0', padding: 4, borderRadius: 12 }}>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div role="tablist" style={{
+          display: 'flex', gap: 4, backgroundColor: C.card, padding: 5, borderRadius: 999,
+          border: `1px solid ${C.border}`, boxShadow: C.shadow, maxWidth: '100%', overflowX: 'auto',
+        }}>
           {TABS.map(t => (
             <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)} style={{
-              minHeight: 40, padding: '6px 12px', borderRadius: 9, border: 'none', cursor: 'pointer',
-              fontFamily: 'inherit', fontSize: 14, fontWeight: tab === t.id ? 700 : 500,
-              backgroundColor: tab === t.id ? C.card : 'transparent',
-              color: tab === t.id ? C.accent : C.sub,
-              boxShadow: tab === t.id ? C.shadow : 'none',
+              minHeight: 40, padding: '6px 14px', borderRadius: 999, border: 'none', cursor: 'pointer',
+              fontFamily: 'inherit', fontSize: 14, fontWeight: 700, whiteSpace: 'nowrap',
+              backgroundColor: tab === t.id ? C.accent : 'transparent',
+              color: tab === t.id ? '#FFFFFF' : C.sub,
             }}>
               {t.label} ({counts[t.id]})
             </button>
           ))}
         </div>
-        <input
-          type="search" placeholder="חיפוש לפי שם, טלפון או עיר" value={search}
-          onChange={e => setSearch(e.target.value)} aria-label="חיפוש"
-          style={{ ...inputStyle, flex: '1 1 220px', width: 'auto' }}
-        />
+        <div style={{ position: 'relative', flex: '1 1 220px' }}>
+          <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', color: C.muted, display: 'flex' }}>
+            <Icon name="search" size={18} />
+          </span>
+          <input
+            type="search" placeholder="חיפוש לפי שם, טלפון או עיר" value={search}
+            onChange={e => setSearch(e.target.value)} aria-label="חיפוש"
+            style={{ ...inputStyle, borderRadius: 999, paddingRight: 42, boxShadow: C.shadow }}
+          />
+        </div>
       </div>
 
       {data.state === 'loading' && <StatusMessage title="טוען..." />}
@@ -134,7 +148,7 @@ export default function MothersPage() {
       )}
 
       {visible.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 440px), 1fr))', gap: 16 }}>
           {visible.map(m => (
             <MotherCard
               key={m.id}

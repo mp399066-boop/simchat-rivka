@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { useMe } from '@/components/layout/AppShell';
+import Icon, { type IconName } from '@/components/ui/Icon';
+import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
-import { formatDate, israelDate } from '@/lib/dates';
+import { gregorianDate, hebrewDate, israelDate, weekday } from '@/lib/dates';
 import { fullAddress, isOpen, STATUS_COLORS, STATUS_LABELS, type Mother } from '@/lib/mothers';
 import { teamNames, useMothers } from '@/lib/useMothers';
-import { buttonStyle, colors as C } from '@/lib/theme';
+import { buttonStyle, card, colors as C } from '@/lib/theme';
 
 export default function HomePage() {
   const me = useMe();
@@ -20,6 +22,7 @@ export default function HomePage() {
   const groups = useMemo(() => {
     const open = data.state === 'ready' ? data.mothers.filter(isOpen) : [];
     return {
+      open,
       late:        open.filter(m => m.delivery_date && m.delivery_date < today),
       today:       open.filter(m => m.delivery_date === today),
       tomorrow:    open.filter(m => m.delivery_date === tomorrow),
@@ -29,18 +32,19 @@ export default function HomePage() {
   }, [data, today, tomorrow]);
 
   const names = useMemo(() => teamNames(data.state === 'ready' ? data.team : []), [data]);
+  const attention = groups.late.length + groups.unscheduled.length + groups.unassigned.length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>
-            שלום{me.fullName ? ` ${me.fullName}` : ''}
-          </h1>
-          <p style={{ fontSize: 15, color: C.sub, margin: '4px 0 0' }}>{formatDate(today)}</p>
-        </div>
-        <Link href="/mothers" style={buttonStyle('primary')}>{isAdmin ? 'כל היולדות' : 'כל המשלוחים שלי'}</Link>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <PageHero
+        title={`שלום${me.fullName ? ` ${me.fullName}` : ''}`}
+        subtitle={`יום ${weekday(today)} · ${hebrewDate(today, true)} · ${gregorianDate(today)}`}
+        action={
+          <Link href="/mothers" style={buttonStyle('light')}>
+            <Icon name="heart" size={18} />{isAdmin ? 'כל היולדות' : 'המשלוחים שלי'}
+          </Link>
+        }
+      />
 
       {data.state === 'loading' && <StatusMessage title="טוען..." />}
       {data.state === 'error' && (
@@ -51,10 +55,18 @@ export default function HomePage() {
 
       {data.state === 'ready' && (
         <>
-          {/* Things that need the manager's attention */}
-          {isAdmin && (groups.late.length > 0 || groups.unscheduled.length > 0 || groups.unassigned.length > 0) && (
-            <section style={{ ...card, borderColor: '#FCD34D', backgroundColor: '#FFFBEB' }}>
-              <h2 style={h2}>דורש טיפול</h2>
+          {/* Numbers at a glance */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+            <Stat icon="truck"    label="יוצאים היום" value={groups.today.length + groups.late.length} />
+            <Stat icon="calendar" label="מחר"         value={groups.tomorrow.length} />
+            <Stat icon="heart"    label="לטיפול"      value={groups.open.length} />
+            {isAdmin && <Stat icon="alert" label="דורש טיפול" value={attention} warn={attention > 0} />}
+          </div>
+
+          {/* What needs the manager's attention */}
+          {isAdmin && attention > 0 && (
+            <section style={{ ...card, background: '#FFFBEB', borderColor: '#FDE68A' }}>
+              <h2 style={{ ...h2, color: '#92400E' }}><Icon name="alert" size={20} />דורש טיפול</h2>
               <ul style={{ margin: 0, paddingInlineStart: 20, color: C.text, fontSize: 15, lineHeight: 1.9 }}>
                 {groups.late.length > 0 && <li>{groups.late.length} משלוחים שתאריכם עבר ועוד לא סומנו כנמסרו</li>}
                 {groups.unscheduled.length > 0 && <li>{groups.unscheduled.length} יולדות בלי תאריך משלוח</li>}
@@ -63,47 +75,78 @@ export default function HomePage() {
             </section>
           )}
 
-          <DayList title="היום" mothers={[...groups.late, ...groups.today]} today={today} names={isAdmin ? names : null} />
-          <DayList title="מחר" mothers={groups.tomorrow} today={today} names={isAdmin ? names : null} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 16 }}>
+            <DayList title="היום" date={today} mothers={[...groups.late, ...groups.today]} today={today} names={isAdmin ? names : null} />
+            <DayList title="מחר" date={tomorrow} mothers={groups.tomorrow} today={today} names={isAdmin ? names : null} />
+          </div>
         </>
       )}
     </div>
   );
 }
 
-function DayList({ title, mothers, today, names }: {
+function Stat({ icon, label, value, warn }: { icon: IconName; label: string; value: number; warn?: boolean }) {
+  return (
+    <div style={{ ...card, padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <span style={{
+        width: 46, height: 46, borderRadius: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: warn ? '#FEF3C7' : C.accentSub, color: warn ? '#B45309' : C.accent,
+      }}>
+        <Icon name={icon} size={22} />
+      </span>
+      <span style={{ display: 'flex', flexDirection: 'column' }}>
+        <span style={{ fontSize: 26, fontWeight: 800, color: C.text, lineHeight: 1.1 }}>{value}</span>
+        <span style={{ fontSize: 13, color: C.sub }}>{label}</span>
+      </span>
+    </div>
+  );
+}
+
+function DayList({ title, date, mothers, today, names }: {
   title: string;
+  date: string;
   mothers: Mother[];
   today: string;
   names: Map<string, string> | null;
 }) {
   return (
     <section style={card}>
-      <h2 style={h2}>{title} <span style={{ color: C.muted, fontWeight: 500 }}>({mothers.length})</span></h2>
+      <h2 style={h2}>
+        {title}
+        <span style={{ fontSize: 14, fontWeight: 500, color: C.sub }}>{hebrewDate(date)} · {gregorianDate(date)}</span>
+        <span style={{
+          marginInlineStart: 'auto', fontSize: 14, fontWeight: 800, padding: '3px 12px', borderRadius: 999,
+          backgroundColor: C.accentSub, color: C.accent,
+        }}>{mothers.length}</span>
+      </h2>
       {mothers.length === 0 ? (
         <p style={{ margin: 0, color: C.muted, fontSize: 15 }}>אין משלוחים</p>
       ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
-          {mothers.map((m, i) => {
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {mothers.map(m => {
             const s = STATUS_COLORS[m.delivery_status];
             const late = m.delivery_date !== null && m.delivery_date < today;
             return (
               <li key={m.id} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap',
-                padding: '10px 0', borderTop: i ? `1px solid ${C.border}` : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                padding: '10px 12px', borderRadius: 16, backgroundColor: C.tile,
               }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: C.text }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>
                     {m.full_name}
-                    {late && <span style={{ color: C.danger, fontSize: 13, fontWeight: 600 }}> · באיחור ({formatDate(m.delivery_date, false)})</span>}
+                    {late && m.delivery_date && (
+                      <span style={{ color: C.danger, fontSize: 13 }}> · באיחור ({hebrewDate(m.delivery_date)})</span>
+                    )}
                   </div>
                   <div style={{ fontSize: 14, color: C.sub }}>
                     {fullAddress(m) || 'אין כתובת'}
-                    {names && <> · {m.delivery_volunteer_id ? (names.get(m.delivery_volunteer_id) ?? 'מתנדבת') : <span style={{ color: C.danger }}>לא שובצה</span>}</>}
+                    {names && <> · {m.delivery_volunteer_id
+                      ? (names.get(m.delivery_volunteer_id) ?? 'מתנדבת')
+                      : <span style={{ color: C.danger }}>לא שובצה</span>}</>}
                   </div>
                 </div>
                 <span style={{
-                  fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                  fontSize: 13, fontWeight: 800, padding: '4px 10px', borderRadius: 999, flexShrink: 0,
                   backgroundColor: s.bg, color: s.text, whiteSpace: 'nowrap',
                 }}>
                   {STATUS_LABELS[m.delivery_status]}
@@ -117,9 +160,7 @@ function DayList({ title, mothers, today, names }: {
   );
 }
 
-const card = {
-  backgroundColor: C.card, border: `1px solid ${C.border}`, borderRadius: 14,
-  padding: 18, boxShadow: C.shadow,
+const h2 = {
+  fontSize: 18, fontWeight: 800, color: C.text, margin: '0 0 12px',
+  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
 } as const;
-
-const h2 = { fontSize: 17, fontWeight: 700, color: C.text, margin: '0 0 10px' } as const;

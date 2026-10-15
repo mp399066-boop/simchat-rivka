@@ -1,13 +1,13 @@
 import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
-import { Heebo } from 'next/font/google';
+import { Rubik } from 'next/font/google';
 import './globals.css';
 import AppShell from '@/components/layout/AppShell';
 import { FeedbackProvider } from '@/components/ui/Feedback';
 import StatusMessage from '@/components/ui/StatusMessage';
 
-const heebo = Heebo({
-  variable: '--font-heebo',
+const rubik = Rubik({
+  variable: '--font-rubik',
   subsets: ['hebrew', 'latin'],
 });
 
@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={heebo.variable}>
+    <html lang="he" dir="rtl" className={rubik.variable}>
       <body>
         <FeedbackProvider>
           {/* AppShell reads the pathname; with Cache Components that can

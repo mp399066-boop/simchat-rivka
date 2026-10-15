@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Colors live in lib/theme.ts (pages use inline styles). Only what CSS alone
-   can do is here: responsive switches, focus rings, animations. */
+   can do is here: responsive layout switches, focus rings, animations. */
 
 html {
   direction: rtl;
@@ -10,9 +10,14 @@ html {
 
 body {
   margin: 0;
-  background-color: #FBF7F9;
+  min-height: 100vh;
   color: #2A1A22;
-  font-family: var(--font-heebo), system-ui, -apple-system, sans-serif;
+  background-color: #FBF5F8;
+  background-image:
+    radial-gradient(900px 500px at 100% -10%, rgba(221,24,100,0.07), transparent 60%),
+    radial-gradient(700px 500px at -10% 10%, rgba(242,169,59,0.06), transparent 60%);
+  background-attachment: fixed;
+  font-family: var(--font-rubik), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -24,15 +29,25 @@ button:focus-visible, a:focus-visible {
   outline-offset: 2px;
 }
 
-/* ── Navigation: top links on desktop, bottom tabs on phones ── */
+button:disabled { opacity: 0.6; cursor: default; }
+
+/* ── Navigation: pills in the top bar on desktop, bottom tabs on phones ── */
 .nav-desktop { display: flex; align-items: center; }
 .nav-mobile  { display: none; }
+
+/* ── Hero banner ── */
+.hero-body   { padding: 34px 40px 34px 230px; min-height: 200px; justify-content: center; }
+.hero-action { position: absolute; left: 96px; top: 50%; transform: translateY(-50%); }
 
 @media (max-width: 767px) {
   .nav-desktop { display: none; }
   .nav-mobile  { display: flex; }
   /* room for the bottom tabs */
-  .app-main    { padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important; }
+  .app-main    { padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+
+  .hero-body   { padding: 24px 20px; min-height: 0; }
+  .hero-logo   { width: 110px !important; height: 110px !important; left: -30px !important; bottom: auto !important; top: -30px; opacity: 0.25; }
+  .hero-action { position: static; transform: none; margin-top: 6px; }
 }
 
 @keyframes fadeIn {

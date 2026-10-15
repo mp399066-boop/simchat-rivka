@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import Icon, { type IconName } from '@/components/ui/Icon';
 import Logo from '@/components/ui/Logo';
 import StatusMessage from '@/components/ui/StatusMessage';
 import { authFetch, supabase } from '@/lib/supabase';
@@ -30,26 +31,11 @@ type Access =
 
 /* ── Navigation ──────────────────────────────────────────────────────────── */
 
-const icons = {
-  home:    'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z',
-  mothers: 'M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z',
-  users:   'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm13 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-} as const;
-
-const navItems: { href: string; label: string; volunteerLabel?: string; icon: keyof typeof icons; adminOnly?: boolean }[] = [
+const navItems: { href: string; label: string; volunteerLabel?: string; icon: IconName; adminOnly?: boolean }[] = [
   { href: '/',        label: 'בית',       icon: 'home' },
-  { href: '/mothers', label: 'יולדות',    volunteerLabel: 'המשלוחים שלי', icon: 'mothers' },
+  { href: '/mothers', label: 'יולדות',    volunteerLabel: 'המשלוחים שלי', icon: 'heart' },
   { href: '/users',   label: 'משתמשות',   icon: 'users', adminOnly: true },
 ];
-
-function Icon({ name, size = 22 }: { name: keyof typeof icons; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={icons[name]} />
-    </svg>
-  );
-}
 
 /** Pages shown without the shell (and without the access check). */
 const isBarePath = (p: string | null) => p === '/login' || !!p?.startsWith('/auth/');
@@ -119,71 +105,87 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <MeContext.Provider value={me}>
-      <div style={{ minHeight: '100vh', backgroundColor: C.bg, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
 
-        {/* Top bar */}
-        <header style={{
-          position: 'sticky', top: 0, zIndex: 30, backgroundColor: C.card,
-          borderBottom: `1px solid ${C.border}`,
-        }}>
+        {/* Floating top bar */}
+        <header style={{ position: 'sticky', top: 0, zIndex: 30, padding: '12px 12px 0' }}>
           <div style={{
-            maxWidth: 1100, margin: '0 auto', padding: '0 16px', height: 60,
-            display: 'flex', alignItems: 'center', gap: 16,
+            maxWidth: 1180, margin: '0 auto', padding: '8px 10px 8px 12px', minHeight: 64,
+            display: 'flex', alignItems: 'center', gap: 12, borderRadius: 999,
+            backgroundColor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(10px)',
+            border: `1px solid ${C.border}`, boxShadow: '0 8px 24px rgba(110,11,53,0.08)',
           }}>
-            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-              <Logo size={36} />
-              <span style={{ fontSize: 17, fontWeight: 700, color: C.accent, whiteSpace: 'nowrap' }}>שמחת רבקה</span>
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', minWidth: 0 }}>
+              <span style={{
+                width: 46, height: 46, borderRadius: '50%', flexShrink: 0, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', backgroundColor: C.accentSub,
+                border: `2px solid ${C.accentRim}`,
+              }}>
+                <Logo size={32} />
+              </span>
+              <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, minWidth: 0 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: C.deep, whiteSpace: 'nowrap' }}>שמחת רבקה</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, whiteSpace: 'nowrap' }}>ארוחות ליולדות</span>
+              </span>
             </Link>
 
-            {/* Desktop navigation */}
-            <nav className="nav-desktop" style={{ gap: 4, flex: 1 }}>
-              {items.map(item => (
-                <Link key={item.href} href={item.href} style={{
-                  padding: '8px 14px', borderRadius: 8, fontSize: 15, textDecoration: 'none',
-                  fontWeight: isActive(item.href) ? 700 : 500,
-                  color: isActive(item.href) ? C.accent : C.sub,
-                  backgroundColor: isActive(item.href) ? C.accentSub : 'transparent',
-                }}>
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <span className="nav-desktop" style={{ fontSize: 14, color: C.sub, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {me.fullName || me.email}
-              </span>
-              <button onClick={signOut} style={{ ...buttonStyle('secondary'), minHeight: 40, padding: '6px 12px', fontSize: 14 }}>
-                יציאה
+            <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Desktop navigation */}
+              <nav className="nav-desktop" style={{ gap: 6 }}>
+                {items.map(item => {
+                  const active = isActive(item.href);
+                  return (
+                    <Link key={item.href} href={item.href} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44,
+                      padding: '8px 18px', borderRadius: 999, fontSize: 15, fontWeight: 700,
+                      textDecoration: 'none',
+                      color: active ? '#FFFFFF' : C.sub,
+                      backgroundColor: active ? C.accent : C.tile,
+                      boxShadow: active ? '0 6px 16px rgba(200,21,91,0.28)' : 'none',
+                    }}>
+                      <Icon name={item.icon} size={18} />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <button onClick={signOut} title="יציאה" aria-label="יציאה" style={{
+                width: 44, height: 44, borderRadius: '50%', border: 'none', cursor: 'pointer',
+                backgroundColor: C.tile, color: C.sub, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon name="logout" size={19} />
               </button>
             </div>
           </div>
         </header>
 
         {/* Page */}
-        <main className="app-main" style={{ flex: 1, width: '100%', maxWidth: 1100, margin: '0 auto', padding: 16 }}>
+        <main className="app-main" style={{ flex: 1, width: '100%', maxWidth: 1180, margin: '0 auto', padding: '18px 12px 32px' }}>
           {onAdminOnlyPage && !isAdmin
             ? <StatusMessage title="אין הרשאה" text="הדף הזה זמין למנהלת בלבד." />
             : children}
         </main>
 
-        {/* Mobile navigation (bottom tabs) */}
+        {/* Mobile navigation — floating tab bar */}
         <nav className="nav-mobile" style={{
-          position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 30, height: 64,
-          backgroundColor: C.card, borderTop: `1px solid ${C.border}`,
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          position: 'fixed', left: 12, right: 12, bottom: 'calc(10px + env(safe-area-inset-bottom))', zIndex: 30,
+          height: 66, padding: 6, gap: 4, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.96)',
+          backdropFilter: 'blur(10px)', border: `1px solid ${C.border}`, boxShadow: '0 10px 30px rgba(110,11,53,0.14)',
         }}>
-          {items.map(item => (
-            <Link key={item.href} href={item.href} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 2, fontSize: 12, textDecoration: 'none',
-              fontWeight: isActive(item.href) ? 700 : 500,
-              color: isActive(item.href) ? C.accent : C.sub,
-            }}>
-              <Icon name={item.icon} />
-              {item.label}
-            </Link>
-          ))}
+          {items.map(item => {
+            const active = isActive(item.href);
+            return (
+              <Link key={item.href} href={item.href} style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                gap: 2, fontSize: 12, fontWeight: 700, textDecoration: 'none', borderRadius: 999,
+                color: active ? '#FFFFFF' : C.sub,
+                backgroundColor: active ? C.accent : 'transparent',
+              }}>
+                <Icon name={item.icon} size={20} />
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
       </div>
     </MeContext.Provider>
