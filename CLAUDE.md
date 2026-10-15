@@ -41,3 +41,16 @@ Follow the user's `build-standards` skill for every change. Project specifics:
 ## Checks before finishing
 
 `npx tsc --noEmit` · `npx eslint .` · `npm run check:sql` · `npm run build`
+
+## Deploy
+
+- Repo `mp399066-boop/simchat-rivka`; `main` deploys automatically to Vercel
+  project `simchat-rivka` → https://simchat-rivka-fawn.vercel.app
+  (`vercel.json` pins the framework to Next.js — the project was created as "Other").
+- Deploy status: `gh api repos/mp399066-boop/simchat-rivka/commits/<sha>/statuses --jq '.[0].state'`.
+- **This computer's internet goes through NetFree**: new sites (incl. the live
+  site, until approved) answer 418, and npm installs are very slow. Check the
+  live site from GitHub instead: `gh workflow run smoke.yml`, then read the run log.
+- Supabase project `hfhldtvwivyazheqmluy` is in a different account than the
+  Supabase CLI here — no CLI access; SQL is run by the user in the SQL Editor.
+  Real keys are in `.env.local` (git-ignored) and in Vercel (sensitive).
