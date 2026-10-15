@@ -31,6 +31,7 @@ jobs:
           check /api/admin/users      401
           check /auth/callback        307 "error=missing_code"
           check "/auth/callback?code=x" 307 "error=auth_callback_failed"
+          check /mothers              307 "/login?next=%2Fmothers"
           check /icon.png             200
           exit $fail
 
