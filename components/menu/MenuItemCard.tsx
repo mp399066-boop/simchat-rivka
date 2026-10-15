@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
-import type { ItemPlan } from '@/lib/menu';
+import { sourceOf, type ItemPlan } from '@/lib/menu';
 import { card, colors as C, tile } from '@/lib/theme';
 
 /**
@@ -19,6 +19,7 @@ export default function MenuItemCard({ plan, meals, busy, onStock, onEdit, onDel
   onDelete: () => void;
 }) {
   const { item, needed, missing, ready } = plan;
+  const source = sourceOf(item.source);
   // Typed amount, kept while the field is being edited; null = show the saved stock.
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -40,7 +41,13 @@ export default function MenuItemCard({ plan, meals, busy, onStock, onEdit, onDel
           <Icon name="sparkle" size={24} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ fontSize: 19, fontWeight: 800, color: C.text, margin: 0 }}>{item.name}</h3>
+          <h3 style={{ fontSize: 19, fontWeight: 800, color: C.text, margin: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {item.name}
+            <span style={{
+              fontSize: 12, fontWeight: 800, padding: '3px 10px', borderRadius: 999,
+              backgroundColor: source.bg, color: source.text, whiteSpace: 'nowrap',
+            }}>{source.label}</span>
+          </h3>
           {item.details && <div style={{ fontSize: 14, color: C.sub, marginTop: 2 }}>{item.details}</div>}
           {!item.is_active && <div style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>לא בשימוש כרגע</div>}
         </div>
@@ -71,7 +78,7 @@ export default function MenuItemCard({ plan, meals, busy, onStock, onEdit, onDel
       {/* Tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
         <Tile value={needed} label={`צריך ל-${meals} ארוחות`} />
-        <Tile value={item.stock} label="יש במלאי" warn={item.stock < 0} />
+        <Tile value={item.stock} label={item.source === 'freezer' ? 'יש בפריזר' : 'יש במלאי'} warn={item.stock < 0} />
         <Tile value={missing} label="חסר" warn={missing > 0} good={item.is_active && needed > 0 && !missing} />
       </div>
 

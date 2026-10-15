@@ -7,8 +7,9 @@ import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
 import MenuItemCard from '@/components/menu/MenuItemCard';
 import MenuItemForm from '@/components/menu/MenuItemForm';
+import TodoList from '@/components/menu/TodoList';
 import { fullDate, israelDate, shiftDate } from '@/lib/dates';
-import { HORIZONS, mealsToPack, planItems, type Horizon, type MenuItem, type MenuItemInput } from '@/lib/menu';
+import { HORIZONS, mealsToPack, planItems, todoLists, type Horizon, type MenuItem, type MenuItemInput } from '@/lib/menu';
 import { deleteMenuItem, loadMenu, saveMenuItem, setStock } from '@/lib/menuData';
 import { useMothers } from '@/lib/useMothers';
 import { buttonStyle, card, colors as C } from '@/lib/theme';
@@ -42,7 +43,11 @@ export default function MenuPage() {
     [mothersData, horizon],
   );
   const plans = useMemo(() => planItems(items, meals.length), [items, meals]);
-  const shopping = plans.filter(p => p.missing > 0);
+  const lists = useMemo(
+    () => todoLists(items, mothersData.state === 'ready' ? mothersData.mothers : [], horizon),
+    [items, mothersData, horizon],
+  );
+  const todoEmpty = !lists.thaw.length && !lists.prepare.length && !lists.buy.length;
   const lastDay = shiftDate(israelDate(), (HORIZONS.find(h => h.id === horizon)?.days ?? 7) - 1);
 
   async function save(input: MenuItemInput): Promise<boolean> {
@@ -129,33 +134,17 @@ export default function MenuPage() {
             </p>
           </section>
 
-          {/* Shopping / preparation list */}
+          {/* What to take out of the freezer, make and buy */}
           {items.length > 0 && (
-            <section className="print-area" style={{
-              ...card, borderColor: shopping.length ? '#FDE68A' : '#BBF7D0',
-              background: shopping.length ? '#FFFBEB' : '#F0FDF4',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: shopping.length ? 10 : 0 }}>
-                <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: shopping.length ? '#92400E' : C.success }}>
-                  {shopping.length ? 'רשימת הכנות וקניות' : 'יש הכול במלאי ✓'}
-                </h2>
-                {shopping.length > 0 && (
-                  <button className="no-print" onClick={() => window.print()} style={{ ...buttonStyle('secondary'), marginInlineStart: 'auto', backgroundColor: '#FFFFFF' }}>
-                    הדפסה
-                  </button>
-                )}
-              </div>
-              {shopping.length > 0 && (
-                <ul style={{ margin: 0, paddingInlineStart: 20, fontSize: 16, lineHeight: 2, color: C.text }}>
-                  {shopping.map(p => (
-                    <li key={p.item.id}>
-                      <strong>{p.item.name}</strong> – חסר {p.missing} {p.item.unit}
-                      <span style={{ color: C.sub, fontSize: 14 }}> (צריך {p.needed}, יש {Math.max(0, p.item.stock)})</span>
-                    </li>
-                  ))}
-                </ul>
+            <TodoList
+              lists={lists}
+              until={`עד ${fullDate(lastDay)}`}
+              action={!todoEmpty && (
+                <button onClick={() => window.print()} style={{ ...buttonStyle('secondary'), backgroundColor: '#FFFFFF' }}>
+                  הדפסה
+                </button>
               )}
-            </section>
+            />
           )}
 
           {items.length === 0 && (

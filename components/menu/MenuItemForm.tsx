@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Field from '@/components/ui/Field';
 import Modal from '@/components/ui/Modal';
-import type { MenuItem, MenuItemInput } from '@/lib/menu';
+import { SOURCES, type ItemSource, type MenuItem, type MenuItemInput } from '@/lib/menu';
 import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 /** Add / edit a menu item (manager only). */
@@ -18,6 +18,7 @@ export default function MenuItemForm({ item, onSubmit, onClose }: {
     unit:      item?.unit ?? 'יח׳',
     per_meal:  String(item?.per_meal ?? 1),
     stock:     String(item?.stock ?? 0),
+    source:    item?.source ?? ('buy' as ItemSource),
     is_active: item?.is_active ?? true,
   });
   const [saving, setSaving] = useState(false);
@@ -42,6 +43,7 @@ export default function MenuItemForm({ item, onSubmit, onClose }: {
       unit: values.unit.trim() || 'יח׳',
       per_meal: perMeal,
       stock,
+      source: values.source,
       is_active: values.is_active,
     });
     setSaving(false);
@@ -67,6 +69,28 @@ export default function MenuItemForm({ item, onSubmit, onClose }: {
       <Field label="פירוט" hint="מה נכנס, הערות להכנה">
         <input {...bind('details')} maxLength={300} style={inputStyle} />
       </Field>
+      {/* Not a <Field>: a <label> around buttons would pick the first one on any click. */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, fontWeight: 600, color: C.sub }}>
+        <span id="source-label">מאיפה מגיע</span>
+        <div role="radiogroup" aria-labelledby="source-label" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {SOURCES.map(s => {
+            const on = values.source === s.id;
+            return (
+              <button key={s.id} type="button" role="radio" aria-checked={on}
+                onClick={() => setValues(old => ({ ...old, source: s.id }))}
+                style={{
+                  flex: '1 1 90px', minHeight: 44, padding: '8px 14px', borderRadius: 999, cursor: 'pointer',
+                  fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
+                  border: `2px solid ${on ? s.text : C.border}`,
+                  backgroundColor: on ? s.bg : '#FFFFFF', color: on ? s.text : C.sub,
+                }}>
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 400, color: C.muted }}>בפריט מהפריזר, המלאי = כמה יש בפריזר</span>
+      </div>
       <div style={row}>
         <Field label="כמה לכל ארוחה">
           <input {...bind('per_meal')} type="number" inputMode="numeric" min={0} step={1} style={inputStyle} />

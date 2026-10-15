@@ -4,7 +4,8 @@
 -- menu_items: what goes into every meal and how many of each (per_meal), and
 -- how many are on hand (stock). When a meal is packed (status ready / out /
 -- delivered) its items come off the stock automatically; if the status goes
--- back (planned / preparing / cancelled) they are returned.
+-- back (planned / preparing / cancelled) they are returned. Each item is
+-- marked by where it comes from: the freezer, made fresh, or bought.
 --
 -- Access: every authorized user may read the menu; only the manager edits it.
 -- Idempotent: safe to run again. Run order: supabase/README.md
@@ -105,3 +106,21 @@ drop trigger if exists mothers_stock on public.mothers;
 create trigger mothers_stock
   before insert or update of delivery_status on public.mothers
   for each row execute function public.mothers_stock();
+
+-- ── Where each item comes from ──────────────────────────────────────────────
+-- freezer = made ahead and frozen (stock = what is in the freezer; take out
+--           before packing), prepare = made fresh, buy = bought ready.
+-- Added after the seed so the seeded items get a sensible first guess; the
+-- update only fills rows that have no value yet, so re-running changes nothing.
+alter table public.menu_items add column if not exists source text;
+update public.menu_items
+   set source = case
+     when name like 'פשטידה%' then 'freezer'
+     when name like 'קופסת ירקות%' or name like 'קינוח%' then 'prepare'
+     else 'buy'
+   end
+ where source is null;
+alter table public.menu_items alter column source set default 'buy';
+alter table public.menu_items alter column source set not null;
+alter table public.menu_items drop constraint if exists menu_items_source_check;
+alter table public.menu_items add constraint menu_items_source_check check (source in ('freezer', 'prepare', 'buy'));

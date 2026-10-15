@@ -1,12 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMe } from '@/components/layout/AppShell';
+import TodoList from '@/components/menu/TodoList';
 import Icon, { type IconName } from '@/components/ui/Icon';
 import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
 import { gregorianDate, hebrewDate, israelDate, weekday } from '@/lib/dates';
+import { todoLists, type MenuItem } from '@/lib/menu';
+import { loadMenu } from '@/lib/menuData';
 import { fullAddress, isOpen, STATUS_COLORS, STATUS_LABELS, type Mother } from '@/lib/mothers';
 import { teamNames, useMothers } from '@/lib/useMothers';
 import { buttonStyle, card, colors as C } from '@/lib/theme';
@@ -15,6 +18,15 @@ export default function HomePage() {
   const me = useMe();
   const isAdmin = me.role === 'admin';
   const { data, retry } = useMothers(isAdmin);
+
+  // The menu (for the to-do list) — manager only; the list is simply hidden if it fails to load.
+  const [menu, setMenu] = useState<MenuItem[] | null>(null);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    loadMenu().then(r => { if (!cancelled) setMenu(r.data); });
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   const today = israelDate(0);
   const tomorrow = israelDate(1);
@@ -30,6 +42,11 @@ export default function HomePage() {
       unassigned:  open.filter(m => m.delivery_date && !m.delivery_volunteer_id),
     };
   }, [data, today, tomorrow]);
+
+  const todo = useMemo(
+    () => (menu?.length && data.state === 'ready' ? todoLists(menu, data.mothers, 'week') : null),
+    [menu, data],
+  );
 
   const names = useMemo(() => teamNames(data.state === 'ready' ? data.team : []), [data]);
   const attention = groups.late.length + groups.unscheduled.length + groups.unassigned.length;
@@ -73,6 +90,15 @@ export default function HomePage() {
                 {groups.unassigned.length > 0 && <li>{groups.unassigned.length} משלוחים בלי מתנדבת שמוסרת</li>}
               </ul>
             </section>
+          )}
+
+          {/* What to take out of the freezer, make and buy */}
+          {isAdmin && todo && (
+            <TodoList
+              lists={todo}
+              until="לשבוע הקרוב"
+              action={<Link href="/menu" style={buttonStyle('secondary')}>לתפריט ולמלאי</Link>}
+            />
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 440px), 1fr))', gap: 16 }}>

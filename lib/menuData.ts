@@ -9,7 +9,7 @@ import type { MenuItem, MenuItemInput } from '@/lib/menu';
 
 type Result<T> = { data: T; error: null } | { data: null; error: string };
 
-const COLUMNS = 'id, name, details, unit, per_meal, stock, sort_order, is_active';
+const COLUMNS = 'id, name, details, unit, per_meal, stock, source, sort_order, is_active';
 
 export async function loadMenu(): Promise<Result<MenuItem[]>> {
   try {
