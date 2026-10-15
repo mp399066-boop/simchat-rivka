@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminUser } from '@/lib/auth';
-import { isTzintukConfigured, tzintukMother } from '@/lib/tzintuk';
+import { getTzintukUnits, isTzintukConfigured, tzintukMother } from '@/lib/tzintuk';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** GET /api/tzintuk/send — is a phone line connected? (manager) */
+/** GET /api/tzintuk/send — is a phone line connected, and how many units are left? (manager) */
 export async function GET(req: NextRequest) {
   const admin = await getAdminUser(req);
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  return NextResponse.json({ configured: isTzintukConfigured() });
+  const configured = isTzintukConfigured();
+  return NextResponse.json({ configured, units: configured ? await getTzintukUnits() : null });
 }
 
 /** POST /api/tzintuk/send { motherId } — ring one mother now (manager). */

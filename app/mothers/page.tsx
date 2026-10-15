@@ -50,7 +50,7 @@ export default function MothersPage() {
   const [editing, setEditing] = useState<Mother | 'new' | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [prepFor, setPrepFor] = useState<Mother | null>(null);
-  const tzintukOn = useTzintukStatus(isAdmin) === 'on';
+  const tzintukOn = useTzintukStatus(isAdmin).status === 'on';
 
   const mothers = useMemo(() => (data.state === 'ready' ? data.mothers : []), [data]);
   const names = useMemo(() => teamNames(data.state === 'ready' ? data.team : []), [data]);

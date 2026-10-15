@@ -12,7 +12,8 @@
 import { createServerClient } from '@/lib/supabaseServer';
 import { israelDate } from '@/lib/dates';
 
-const API = 'https://www.call2all.co.il/ym/api/RunTzintuk';
+const API = 'https://www.call2all.co.il/ym/api';
+const NO_UNITS = 'נגמרו היחידות בימות המשיח – צריך לטעון יחידות';
 
 export function isTzintukConfigured(): boolean {
   return !!process.env.TZINTUK_TOKEN;
@@ -33,16 +34,36 @@ export async function sendTzintuk(phones: string[]): Promise<{ error: string | n
   const body = new URLSearchParams({ token, phones: phones.join(':') });
   if (process.env.TZINTUK_CALLER_ID) body.set('callerId', process.env.TZINTUK_CALLER_ID);
   try {
-    const res = await fetch(API, { method: 'POST', body, signal: AbortSignal.timeout(15_000) });
+    const res = await fetch(`${API}/RunTzintuk`, { method: 'POST', body, signal: AbortSignal.timeout(15_000) });
     const data = await res.json().catch(() => null) as { responseStatus?: string; message?: string } | null;
     if (!res.ok || data?.responseStatus !== 'OK') {
       console.error('[sendTzintuk] failed:', res.status, data?.responseStatus, data?.message);
-      return { error: 'הצינתוק נכשל' };
+      return { error: /unit balance/i.test(data?.message ?? '') ? NO_UNITS : 'הצינתוק נכשל' };
     }
     return { error: null };
   } catch (e) {
     console.error('[sendTzintuk] failed:', (e as Error).message);
     return { error: 'הצינתוק נכשל' };
+  }
+}
+
+/** Units left on the line (a צינתוק costs 0.1 per phone), or null when not connected / unknown. */
+export async function getTzintukUnits(): Promise<number | null> {
+  const token = process.env.TZINTUK_TOKEN;
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API}/GetSession`, {
+      method: 'POST', body: new URLSearchParams({ token }), signal: AbortSignal.timeout(10_000),
+    });
+    const data = await res.json().catch(() => null) as { responseStatus?: string; units?: number } | null;
+    if (!res.ok || data?.responseStatus !== 'OK' || typeof data.units !== 'number') {
+      console.error('[getTzintukUnits] failed:', res.status, data?.responseStatus);
+      return null;
+    }
+    return Math.round(data.units * 10) / 10;
+  } catch (e) {
+    console.error('[getTzintukUnits] failed:', (e as Error).message);
+    return null;
   }
 }
 

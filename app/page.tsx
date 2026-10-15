@@ -18,6 +18,7 @@ import { loadMenu } from '@/lib/menuData';
 import { setDeliveryStatus } from '@/lib/mothersData';
 import { isOpen, type DeliveryStatus, type Mother } from '@/lib/mothers';
 import { prepProgress, useMothers } from '@/lib/useMothers';
+import { useTzintukStatus } from '@/lib/useTzintuk';
 import { buttonStyle, card, colors as C } from '@/lib/theme';
 
 /**
@@ -58,9 +59,10 @@ export default function HomePage() {
     [menu, data],
   );
   const progress = useMemo(() => prepProgress(data.state === 'ready' ? data.prep : []), [data]);
+  const { units: tzintukUnits } = useTzintukStatus(isAdmin);
   const actions = useMemo(
-    () => (isAdmin && data.state === 'ready' ? computeActions({ mothers: data.mothers, today }) : []),
-    [isAdmin, data, today],
+    () => (isAdmin && data.state === 'ready' ? computeActions({ mothers: data.mothers, today, tzintukUnits }) : []),
+    [isAdmin, data, today, tzintukUnits],
   );
 
   async function next(m: Mother, status: DeliveryStatus) {

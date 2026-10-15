@@ -69,7 +69,9 @@ Follow the user's `build-standards` skill for every change. Project specifics:
   buttons (the manager asked). צינתוק (`lib/tzintuk.ts`, ימות המשיח API, env
   `TZINTUK_TOKEN` + optional `TZINTUK_CALLER_ID`): to the mother the evening
   before and the morning of the delivery (/api/cron/tzintuk/[when]) and a
-  button on her card — inactive until the line is connected. Gmail SMTP
+  button on her card — inactive until the line is connected. 0.1 unit per
+  phone; out of units → "נגמרו היחידות" in the error / cron alert, and below
+  `LOW_TZINTUK_UNITS` (`lib/actions.ts`) a line in "מה צריך לעשות". Gmail SMTP
   (`lib/mail.ts`, env `GMAIL_USER` + `GMAIL_APP_PASSWORD`) — nothing is sent
   until both are set. Cron failures e-mail the managers (`lib/cronAlert.ts`).
 - The team (`authorized_users`, screen "מתנדבות" at /users): e-mail is optional —

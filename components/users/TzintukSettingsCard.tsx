@@ -1,12 +1,13 @@
 'use client';
 
 import Icon from '@/components/ui/Icon';
+import { LOW_TZINTUK_UNITS } from '@/lib/actions';
 import { useTzintukStatus } from '@/lib/useTzintuk';
 import { card, colors as C } from '@/lib/theme';
 
 /** Whether צינתוק is connected to a phone line (manager). */
 export default function TzintukSettingsCard() {
-  const status = useTzintukStatus(true);
+  const { status, units } = useTzintukStatus(true);
   const on = status === 'on';
   return (
     <section style={{ ...card, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -22,6 +23,12 @@ export default function TzintukSettingsCard() {
           {status === 'loading' && 'בודקת...'}
           {status === 'error' && 'לא הצלחנו לבדוק את מצב הצינתוק'}
           {on && 'פעיל: צינתוק אוטומטי ליולדת בערב שלפני המשלוח ובבוקר של יום המשלוח. בכרטיס של כל יולדת יש גם כפתור צינתוק.'}
+          {on && units !== null && (
+            <div style={{ marginTop: 4, fontWeight: 700, color: units < LOW_TZINTUK_UNITS ? '#B45309' : C.text }}>
+              נשארו {units} יחידות בימות המשיח (צינתוק = 0.1 יחידה)
+              {units < LOW_TZINTUK_UNITS && ' – כדאי לטעון'}
+            </div>
+          )}
           {status === 'off' && 'עוד לא מחובר קו טלפון. כשיחובר – יישלח צינתוק אוטומטי בערב שלפני ובבוקר המשלוח, ויופיע כפתור צינתוק בכרטיס היולדת.'}
         </div>
       </div>

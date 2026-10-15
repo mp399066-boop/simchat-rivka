@@ -28,10 +28,25 @@ export const URGENCY_LABELS: Record<Urgency, string> = {
 /** Link to the mothers page, filtered to one mother. */
 const motherLink = (m: Mother) => `/mothers?q=${encodeURIComponent(m.full_name)}`;
 
-export function computeActions({ mothers, today }: { mothers: Mother[]; today: string }): Action[] {
+/** Below this many units on the ימות המשיח line the manager is warned (a צינתוק costs 0.1 per phone). */
+export const LOW_TZINTUK_UNITS = 2;
+
+export function computeActions({ mothers, today, tzintukUnits = null }: {
+  mothers: Mother[]; today: string; tzintukUnits?: number | null;
+}): Action[] {
   const tomorrow = shiftDate(today, 1);
   const actions: Action[] = [];
   const when = (date: string) => `${relativeDay(date)} · ${hebrewDate(date)}`;
+
+  // The צינתוק line is running out of units.
+  if (tzintukUnits !== null && tzintukUnits < LOW_TZINTUK_UNITS) {
+    actions.push({
+      key: 'tzintuk-units', urgency: tzintukUnits < 0.1 ? 'now' : 'week', icon: 'phone',
+      text: tzintukUnits < 0.1 ? 'נגמרו היחידות לצינתוק – היולדות לא מקבלות צינתוק' : 'נשארו מעט יחידות לצינתוק',
+      detail: `נשארו ${tzintukUnits} יחידות בימות המשיח · לטעון בטאב "יחידות" באתר הניהול שלהם`,
+      href: '/users', cta: 'לפרטים',
+    });
+  }
 
   for (const m of mothers.filter(isOpen)) {
     const date = m.delivery_date;
