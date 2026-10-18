@@ -19,6 +19,7 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
@@ -92,11 +93,25 @@ export default function LoginPage() {
             value={email} onChange={e => setEmail(e.target.value)} maxLength={200}
             style={{ ...inputStyle, textAlign: 'left' }}
           />
-          <input
-            type="password" dir="ltr" autoComplete="current-password" required placeholder="סיסמה" aria-label="סיסמה"
-            value={password} onChange={e => setPassword(e.target.value)} maxLength={200}
-            style={{ ...inputStyle, textAlign: 'left' }}
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? 'text' : 'password'} dir="ltr" autoComplete="current-password" required
+              placeholder="סיסמה" aria-label="סיסמה" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+              value={password} onChange={e => setPassword(e.target.value)} maxLength={200}
+              style={{ ...inputStyle, textAlign: 'left', paddingRight: 70 }}
+            />
+            <button
+              type="button" onClick={() => setShowPassword(v => !v)} aria-pressed={showPassword}
+              style={{
+                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                minHeight: 36, padding: '4px 10px', borderRadius: 999, border: 'none',
+                backgroundColor: C.tile, color: C.text, fontSize: 13, fontWeight: 700,
+                fontFamily: 'inherit', cursor: 'pointer',
+              }}
+            >
+              {showPassword ? 'הסתרה' : 'הצגה'}
+            </button>
+          </div>
           <button
             type="submit"
             disabled={loading || !isSupabaseConfigured}
