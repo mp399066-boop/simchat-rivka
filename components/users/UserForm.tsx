@@ -22,7 +22,7 @@ export interface UserFormValues {
  * Add / edit a person, in a dialog.
  *   mode 'volunteer' — name, phone, city, what she does, notes. Volunteers
  *                      don't use the system: no e-mail, no role.
- *   mode 'manager'   — also the Google e-mail she signs in with.
+ *   mode 'manager'   — also the e-mail she signs in with (password login).
  * `lockAccess` = the manager's own row (her e-mail can't be changed here).
  */
 export default function UserForm({ user, mode, lockAccess, onSubmit, onClose }: {
@@ -109,7 +109,7 @@ export default function UserForm({ user, mode, lockAccess, onSubmit, onClose }: 
       </div>
 
       {mode === 'manager' && (
-        <Field label="מייל (חשבון Google שאיתו היא נכנסת)" required hint={lockAccess
+        <Field label="מייל (איתו היא נכנסת)" required hint={lockAccess
           ? 'זה החשבון שאיתו את נכנסת – אי אפשר לשנות אותו מכאן'
           : 'מנהלת רואה ומנהלת הכול במערכת'}>
           <input {...text('email')} type="email" dir="ltr" disabled={lockAccess} maxLength={200}

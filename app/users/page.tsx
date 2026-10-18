@@ -97,7 +97,7 @@ export default function VolunteersPage() {
       return false;
     }
     toast.success(target ? 'הפרטים עודכנו'
-      : editing.mode === 'manager' ? 'המנהלת נוספה. היא יכולה להיכנס עם חשבון ה-Google שלה.' : 'המתנדבת נוספה לרשימה');
+      : editing.mode === 'manager' ? 'המנהלת נוספה. כדי שתוכל להיכנס צריך לקבוע לה סיסמה.' : 'המתנדבת נוספה לרשימה');
     await reload();
     return true;
   }
@@ -253,7 +253,7 @@ export default function VolunteersPage() {
               <Icon name="plus" size={16} />מנהלת חדשה
             </button>
           </div>
-          <p style={{ margin: 0, fontSize: 14, color: C.sub }}>רק מי שמופיעה כאן נכנסת למערכת (עם חשבון ה-Google שלה).</p>
+          <p style={{ margin: 0, fontSize: 14, color: C.sub }}>רק מנהלת שמופיעה כאן נכנסת למערכת (עם המייל והסיסמה שלה).</p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {managers.map(u => (
               <li key={u.id} style={{

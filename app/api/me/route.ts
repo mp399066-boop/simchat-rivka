@@ -3,7 +3,7 @@
  * the UI:
  *   200 { email, role, fullName } — active authorized user
  *   401                           — missing / invalid token (not signed in)
- *   403                           — valid Google account, not authorized
+ *   403                           — signed in, but not authorized
  *
  * The real enforcement is RLS and the per-route checks; this only drives
  * what the UI shows.
