@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import Icon from '@/components/ui/Icon';
 import IconButton from '@/components/ui/IconButton';
+import { infoOf, verb } from '@/lib/categories';
 import { gregorianDate, hebrewDate, relativeDay } from '@/lib/dates';
 import {
   confirmationLabel, DELIVERY_STATUSES, fullAddress, isOpen, nextStatus, STATUS_COLORS, STATUS_LABELS,
@@ -11,7 +12,7 @@ import {
 import { buttonStyle, card, colors as C, inputStyle, tile } from '@/lib/theme';
 
 /**
- * One mother + her delivery. The manager gets a status picker, edit and
+ * One mother / young couple / simcha + the delivery. The manager gets a status picker, edit and
  * delete; a volunteer gets "יצאתי" / "נמסר" buttons only.
  */
 export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, prep, onStatus, onEdit, onDelete, onPrep, onRemind, onTzintuk, onConfirm }: {
@@ -34,6 +35,7 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
   const address = fullAddress(m);
   const status = STATUS_COLORS[m.delivery_status];
   const confirmation = confirmationLabel(m);
+  const info = infoOf(m);
   const CONFIRM_LOOK = { ok: { bg: '#DCFCE7', fg: '#166534' }, warn: { bg: '#FEF3C7', fg: '#92400E' }, wait: { bg: C.tile, fg: C.sub } };
 
   return (
@@ -44,10 +46,13 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
           width: 50, height: 50, borderRadius: 16, flexShrink: 0, display: 'flex', alignItems: 'center',
           justifyContent: 'center', backgroundColor: C.accentSub, color: C.accent,
         }}>
-          <Icon name="heart" size={24} />
+          <Icon name={info.icon} size={24} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h3 style={{ fontSize: 19, fontWeight: 800, color: C.text, margin: 0, lineHeight: 1.3 }}>{m.full_name}</h3>
+          {(m.occasion || (!isAdmin && info.id !== 'birth')) && (
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.accent }}>{m.occasion || info.one}</div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, color: C.sub, marginTop: 4 }}>
             <Icon name="calendar" size={15} />
             {m.delivery_date
@@ -67,7 +72,7 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
               marginTop: 6, marginInlineStart: confirmation ? 6 : 0, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
               fontSize: 13, fontWeight: 700, padding: '3px 10px', borderRadius: 999, backgroundColor: C.tile, color: C.accent,
             }}>
-              {m.confirm_response === 'change' ? 'טופל ✓' : 'אישרה (בטלפון) ✓'}
+              {m.confirm_response === 'change' ? 'טופל ✓' : `${verb(m, 'אישרה', 'אישרו')} (בטלפון) ✓`}
             </button>
           )}
         </div>
@@ -81,7 +86,7 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
 
       {/* Stat tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
-        <Tile label="תאריך לידה" value={m.birth_date ? hebrewDate(m.birth_date) : '—'} sub={m.birth_date ? gregorianDate(m.birth_date) : undefined} />
+        <Tile label={info.eventLabel} value={m.birth_date ? hebrewDate(m.birth_date) : '—'} sub={m.birth_date ? gregorianDate(m.birth_date) : undefined} />
         <Tile label="משלוח" value={m.delivery_date ? relativeDay(m.delivery_date) : '—'} sub={m.delivery_date ? hebrewDate(m.delivery_date) : 'לא נקבע'} />
         {isAdmin
           ? <Tile label="מוסרת" value={volunteerName ?? '—'} />
@@ -99,7 +104,7 @@ export default function MotherCard({ mother: m, volunteerName, isAdmin, busy, pr
           {m.phone && <Line icon="phone"><span dir="ltr">{m.phone}</span></Line>}
           {isAdmin && m.email && <Line icon="mail"><span dir="ltr">{m.email}</span></Line>}
           {isAdmin && m.confirm_note && (
-            <Line icon="alert"><span style={{ color: '#92400E', fontWeight: 600 }}>היולדת כתבה: {m.confirm_note}</span></Line>
+            <Line icon="alert"><span style={{ color: '#92400E', fontWeight: 600 }}>{info.plural ? 'הם כתבו' : 'היולדת כתבה'}: {m.confirm_note}</span></Line>
           )}
           {m.notes && <Line icon="edit"><span style={{ color: C.sub, whiteSpace: 'pre-wrap' }}>{m.notes}</span></Line>}
         </div>

@@ -13,7 +13,8 @@ import PageHero from '@/components/ui/PageHero';
 import StatusMessage from '@/components/ui/StatusMessage';
 import { computeActions } from '@/lib/actions';
 import { gregorianDate, hebrewDate, israelDate, weekday } from '@/lib/dates';
-import { todoLists, type MenuItem } from '@/lib/menu';
+import { CATEGORIES, inCategory } from '@/lib/categories';
+import { mealsToPack, todoLists, type MenuItem } from '@/lib/menu';
 import { loadMenu } from '@/lib/menuData';
 import { setDeliveryStatus } from '@/lib/mothersData';
 import { isOpen, type DeliveryStatus, type Mother } from '@/lib/mothers';
@@ -54,10 +55,18 @@ export default function HomePage() {
     };
   }, [data, today, tomorrow]);
 
-  const todo = useMemo(
-    () => (menu?.length && data.state === 'ready' ? todoLists(menu, data.mothers, 'week') : null),
-    [menu, data],
-  );
+  // Per category: what to take out / make / buy for its own meals. The mothers'
+  // list always shows (as before); a wedding / simcha list only while it has
+  // meals coming — and a reminder to set up its menu if there is none yet.
+  const todos = useMemo(() => {
+    if (!menu || data.state !== 'ready') return [];
+    return CATEGORIES.map(info => {
+      const items = inCategory(menu, info.id);
+      const mothers = inCategory(data.mothers, info.id);
+      const coming = mealsToPack(mothers, 'week').length;
+      return { info, coming, lists: items.length ? todoLists(items, mothers, 'week') : null };
+    }).filter(t => (t.info.id === 'birth' ? !!t.lists : t.coming > 0));
+  }, [menu, data]);
   const progress = useMemo(() => prepProgress(data.state === 'ready' ? data.prep : []), [data]);
   const { units: tzintukUnits } = useTzintukStatus(isAdmin);
   const actions = useMemo(
@@ -116,6 +125,7 @@ export default function HomePage() {
           {/* Where every meal stands, with the next step */}
           <StatusBoard
             mothers={data.mothers}
+            isAdmin={isAdmin}
             progress={progress}
             today={today}
             busyId={busyId}
@@ -124,13 +134,22 @@ export default function HomePage() {
           />
 
           {/* What to take out of the freezer, make and buy */}
-          {isAdmin && todo && (
+          {isAdmin && todos.map(({ info, coming, lists }) => lists ? (
             <TodoList
-              lists={todo}
+              key={info.id}
+              lists={lists}
               until="לשבוע הקרוב"
-              action={<Link href="/menu" style={buttonStyle('secondary')}>לתפריט ולמלאי</Link>}
+              label={todos.length > 1 ? info.label : undefined}
+              action={<Link href={`${info.base}/menu`} style={buttonStyle('secondary')}>לתפריט ולמלאי</Link>}
             />
-          )}
+          ) : (
+            <section key={info.id} style={{ ...card, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 220px', fontSize: 16, fontWeight: 700, color: C.text }}>
+                {coming} ארוחות של {info.label} השבוע, ועוד אין ל{info.label} תפריט
+              </span>
+              <Link href={`${info.base}/menu`} style={buttonStyle('primary')}>להגדרת התפריט</Link>
+            </section>
+          ))}
         </>
       )}
 

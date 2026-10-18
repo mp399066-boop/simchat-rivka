@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import Icon, { type IconName } from '@/components/ui/Icon';
 import Logo from '@/components/ui/Logo';
 import StatusMessage from '@/components/ui/StatusMessage';
+import { CATEGORIES } from '@/lib/categories';
 import { authFetch, supabase } from '@/lib/supabase';
 import { buttonStyle, colors as C } from '@/lib/theme';
 import type { Role } from '@/lib/auth';
@@ -31,12 +32,22 @@ type Access =
 
 /* ── Navigation ──────────────────────────────────────────────────────────── */
 
-const navItems: { href: string; label: string; volunteerLabel?: string; icon: IconName; adminOnly?: boolean }[] = [
-  { href: '/',        label: 'בית',       icon: 'home' },
-  { href: '/mothers', label: 'יולדות',    volunteerLabel: 'המשלוחים שלי', icon: 'heart' },
-  { href: '/prep',    label: 'הכנות',     volunteerLabel: 'ההכנות שלי', icon: 'chef' },
-  { href: '/menu',    label: 'תפריט ומלאי', icon: 'list',  adminOnly: true },
-  { href: '/users',   label: 'מתנדבות',   icon: 'users', adminOnly: true },
+// The manager: home, a tab per category (its list, prep and menu are inside
+// it — CategoryTabs), the team. A volunteer: her deliveries and her prep.
+const navItems: { href: string; label: string; volunteerLabel?: string; icon: IconName; adminOnly?: boolean; volunteerOnly?: boolean }[] = [
+  { href: '/', label: 'בית', icon: 'home' },
+  ...CATEGORIES.map(c => ({
+    href: c.base, label: c.label, icon: c.icon,
+    ...(c.id === 'birth' ? { volunteerLabel: 'המשלוחים שלי' } : { adminOnly: true }),
+  })),
+  { href: '/prep',  label: 'ההכנות שלי', icon: 'chef', volunteerOnly: true },
+  { href: '/users', label: 'מתנדבות',   icon: 'users', adminOnly: true },
+];
+
+/** Pages for the manager only (besides the admin-only tabs): each category's prep and menu. */
+const adminPaths = [
+  ...navItems.filter(i => i.adminOnly).map(i => i.href),
+  ...CATEGORIES.flatMap(c => [`${c.base}/prep`, `${c.base}/menu`]),
 ];
 
 /** Pages shown without the shell (and without the access check). */
@@ -100,9 +111,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { me } = access;
   const isAdmin = me.role === 'admin';
   const items = navItems
-    .filter(i => !i.adminOnly || isAdmin)
+    .filter(i => (isAdmin ? !i.volunteerOnly : !i.adminOnly))
     .map(i => ({ ...i, label: !isAdmin && i.volunteerLabel ? i.volunteerLabel : i.label }));
-  const onAdminOnlyPage = navItems.some(i => i.adminOnly && pathname?.startsWith(i.href));
+  const onAdminOnlyPage = adminPaths.some(p => pathname === p || !!pathname?.startsWith(`${p}/`));
   const isActive = (href: string) => href === '/' ? pathname === '/' : !!pathname?.startsWith(href);
 
   return (
@@ -127,7 +138,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </span>
               <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, minWidth: 0 }}>
                 <span style={{ fontSize: 18, fontWeight: 800, color: C.deep, whiteSpace: 'nowrap' }}>שמחת רבקה</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, whiteSpace: 'nowrap' }}>ארוחות ליולדות</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: C.accent, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>ארוחות ליולדות ולשמחות</span>
               </span>
             </Link>
 

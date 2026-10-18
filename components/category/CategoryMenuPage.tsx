@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import CategoryTabs from '@/components/category/CategoryTabs';
 import { useFeedback } from '@/components/ui/Feedback';
 import Icon from '@/components/ui/Icon';
 import PageHero from '@/components/ui/PageHero';
@@ -8,56 +9,67 @@ import StatusMessage from '@/components/ui/StatusMessage';
 import MenuItemCard from '@/components/menu/MenuItemCard';
 import MenuItemForm from '@/components/menu/MenuItemForm';
 import TodoList from '@/components/menu/TodoList';
+import { CATEGORY_INFO, inCategory, type Category } from '@/lib/categories';
 import { fullDate, israelDate, shiftDate } from '@/lib/dates';
 import { HORIZONS, mealsToPack, planItems, todoLists, type Horizon, type MenuItem, type MenuItemInput } from '@/lib/menu';
-import { deleteMenuItem, loadMenu, saveMenuItem, setStock } from '@/lib/menuData';
+import { copyMenu, deleteMenuItem, loadMenu, saveMenuItem, setStock } from '@/lib/menuData';
 import { useMothers } from '@/lib/useMothers';
 import { buttonStyle, card, colors as C } from '@/lib/theme';
 
 type MenuState = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; items: MenuItem[] };
 
-async function fetchMenu(): Promise<MenuState> {
-  const { data, error } = await loadMenu();
+async function fetchMenu(category: Category): Promise<MenuState> {
+  const { data, error } = await loadMenu(category);
   return error !== null ? { state: 'error', message: error } : { state: 'ready', items: data };
 }
 
-/** The fixed menu, the stock, and what still has to be prepared (manager only). */
-export default function MenuPage() {
+/** One category's menu, its stock, and what still has to be prepared (manager only). */
+export default function CategoryMenuPage({ category }: { category: Category }) {
+  const info = CATEGORY_INFO[category];
   const { confirm, toast } = useFeedback();
   const { data: mothersData, reload: reloadMothers } = useMothers(true);
   const [menu, setMenu] = useState<MenuState>({ state: 'loading' });
   const [horizon, setHorizon] = useState<Horizon>('week');
   const [editing, setEditing] = useState<MenuItem | 'new' | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [copying, setCopying] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetchMenu().then(s => { if (!cancelled) setMenu(s); });
+    fetchMenu(category).then(s => { if (!cancelled) setMenu(s); });
     return () => { cancelled = true; };
-  }, []);
-  const reload = useCallback(() => fetchMenu().then(setMenu), []);
+  }, [category]);
+  const reload = useCallback(() => fetchMenu(category).then(setMenu), [category]);
 
   const items = useMemo(() => (menu.state === 'ready' ? menu.items : []), [menu]);
-  const meals = useMemo(
-    () => (mothersData.state === 'ready' ? mealsToPack(mothersData.mothers, horizon) : []),
-    [mothersData, horizon],
+  const mothers = useMemo(
+    () => (mothersData.state === 'ready' ? inCategory(mothersData.mothers, category) : []),
+    [mothersData, category],
   );
+  const meals = useMemo(() => mealsToPack(mothers, horizon), [mothers, horizon]);
   const plans = useMemo(() => planItems(items, meals.length), [items, meals]);
-  const lists = useMemo(
-    () => todoLists(items, mothersData.state === 'ready' ? mothersData.mothers : [], horizon),
-    [items, mothersData, horizon],
-  );
+  const lists = useMemo(() => todoLists(items, mothers, horizon), [items, mothers, horizon]);
   const todoEmpty = !lists.thaw.length && !lists.prepare.length && !lists.buy.length;
   const lastDay = shiftDate(israelDate(), (HORIZONS.find(h => h.id === horizon)?.days ?? 7) - 1);
 
   async function save(input: MenuItemInput): Promise<boolean> {
     const id = editing && editing !== 'new' ? editing.id : null;
     const nextOrder = Math.max(0, ...items.map(i => i.sort_order)) + 10;
-    const { error } = await saveMenuItem(id, input, nextOrder);
+    const { error } = await saveMenuItem(id, input, category, nextOrder);
     if (error) { toast.error(error); return false; }
     toast.success(id ? 'הפריט עודכן' : 'הפריט נוסף לתפריט');
     await reload();
     return true;
+  }
+
+  /** An empty menu (a new category) can start as a copy of the mothers' menu. */
+  async function copyFromBirths() {
+    setCopying(true);
+    const source = await loadMenu('birth');
+    const { error } = source.error !== null ? { error: source.error } : await copyMenu(source.data, category);
+    if (error) toast.error(error);
+    else { toast.success('התפריט הועתק – אפשר לשנות, להוסיף ולמחוק'); await reload(); }
+    setCopying(false);
   }
 
   async function changeStock(item: MenuItem, stock: number) {
@@ -87,14 +99,16 @@ export default function MenuPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <PageHero
-        title="תפריט ומלאי"
-        subtitle="מה נכנס לכל ארוחה, מה כבר יש, ומה צריך להכין או לקנות"
+        title={`תפריט ומלאי – ${info.label}`}
+        subtitle={`מה נכנס לכל ${info.meal}, מה כבר יש, ומה צריך להכין או לקנות`}
         action={
           <button onClick={() => setEditing('new')} style={buttonStyle('light')}>
             <Icon name="plus" size={18} />פריט חדש
           </button>
         }
       />
+
+      <CategoryTabs category={category} />
 
       {loading && <StatusMessage title="טוען..." />}
       {error && (
@@ -130,7 +144,7 @@ export default function MenuPage() {
               </p>
             )}
             <p style={{ margin: 0, fontSize: 13, color: C.muted }}>
-              כשמשלוח מסומן &quot;נארז&quot;, &quot;יצא&quot; או &quot;נמסר&quot;, הפריטים שלו יורדים מהמלאי לבד. בפריטים שמכינים טריים, סימון ✓ ב&quot;מה מוכן&quot; של ארוחה מוסיף ל&quot;כבר מוכן&quot;.
+              כשמשלוח מסומן &quot;נארז&quot;, &quot;יצא&quot; או &quot;נמסר&quot;, הפריטים שלו יורדים מהמלאי של {info.label} לבד. בפריטים שמכינים טריים, סימון ✓ ב&quot;מה מוכן&quot; של ארוחה מוסיף ל&quot;כבר מוכן&quot;.
             </p>
           </section>
 
@@ -148,7 +162,18 @@ export default function MenuPage() {
           )}
 
           {items.length === 0 && (
-            <StatusMessage title="התפריט ריק" text="לחצי על 'פריט חדש' כדי להוסיף את מה שנכנס לכל ארוחה." />
+            <StatusMessage
+              title={`התפריט של ${info.label} ריק`}
+              text={category === 'birth'
+                ? "לחצי על 'פריט חדש' כדי להוסיף את מה שנכנס לכל ארוחה."
+                : `לחצי על 'פריט חדש' כדי להוסיף את מה שנכנס ל${info.meal}, או התחילי מהעתק של תפריט היולדות ושני אותו.`}
+            >
+              {category !== 'birth' && (
+                <button onClick={copyFromBirths} disabled={copying} style={buttonStyle('primary')}>
+                  {copying ? 'מעתיקה...' : 'העתקה מתפריט היולדות'}
+                </button>
+              )}
+            </StatusMessage>
           )}
 
           <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 440px), 1fr))', gap: 16 }}>

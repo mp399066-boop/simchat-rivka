@@ -10,6 +10,7 @@
 
 import { createServerClient } from '@/lib/supabaseServer';
 import { esc, frame, isMailConfigured, mailButton, sendMail } from '@/lib/mail';
+import { CATEGORIES, inCategory, infoOf, verb, type Category } from '@/lib/categories';
 import { fullDate, israelDate } from '@/lib/dates';
 import { fullAddress, STATUS_LABELS, type Mother } from '@/lib/mothers';
 import type { MenuItem } from '@/lib/menu';
@@ -36,8 +37,20 @@ async function tokenFor(motherId: string): Promise<string> {
   return data.token as string;
 }
 
-export function motherMail(m: Pick<Mother, 'full_name' | 'delivery_date'>, confirmUrl: string) {
+export function motherMail(m: Pick<Mother, 'full_name' | 'delivery_date'> & { category?: Category }, confirmUrl: string) {
   const date = fullDate(m.delivery_date);
+  const info = infoOf(m);
+  if (info.plural) {
+    // A young couple / a family: "you" plural, the whole name ("משה ורחל כהן").
+    const html = frame(`מחר מגיעה אליכם ${info.meal} 💐`, `
+      <p>שלום ${esc(m.full_name)},</p>
+      <p>מזל טוב! מחר, <strong>${esc(date)}</strong>, תגיע אליכם ${esc(info.meal)} מארגון שמחת רבקה.</p>
+      <p>נשמח שתאשרו שקיבלתם את ההודעה:</p>
+      <p style="text-align:center">${mailButton(`${confirmUrl}&a=ok`, 'ראינו, תודה!')}${mailButton(`${confirmUrl}&a=change`, 'צריך לשנות משהו', false)}</p>
+      <p style="color:#7D6873;font-size:14px">בתיאבון ומזל טוב,<br>צוות שמחת רבקה</p>`);
+    const text = `שלום ${m.full_name},\nמחר, ${date}, תגיע אליכם ${info.meal} מארגון שמחת רבקה.\nלאישור: ${confirmUrl}\nצוות שמחת רבקה`;
+    return { subject: `מחר מגיעה אליכם ${info.meal} – שמחת רבקה`, html, text };
+  }
   const html = frame('מחר מגיעה אלייך ארוחת בוקר 💐', `
     <p>שלום ${esc(firstName(m.full_name))},</p>
     <p>מזל טוב! מחר, <strong>${esc(date)}</strong>, תגיע אלייך ארוחת בוקר מארגון שמחת רבקה – לחמניות, ירקות, פשטידות, קינוחים ועוד.</p>
@@ -53,10 +66,10 @@ export async function sendMotherReminder(motherId: string, baseUrl: string): Pro
   if (!isMailConfigured()) return { error: 'שליחת מיילים עוד לא הוגדרה' };
   const db = createServerClient();
   const { data: m, error } = await db.from('mothers')
-    .select('id, full_name, email, delivery_date').eq('id', motherId).maybeSingle();
+    .select('id, category, full_name, email, delivery_date').eq('id', motherId).maybeSingle();
   if (error) throw new Error(`mothers read: ${error.message}`);
-  if (!m) return { error: 'היולדת לא נמצאה' };
-  if (!m.email) return { error: 'אין ליולדת כתובת מייל' };
+  if (!m) return { error: 'לא נמצא ברשימה' };
+  if (!m.email) return { error: 'אין כתובת מייל' };
   if (!m.delivery_date) return { error: 'עוד לא נקבע תאריך משלוח' };
 
   const url = `${baseUrl}/confirm?t=${await tokenFor(m.id)}`;
@@ -127,9 +140,13 @@ export async function runDailyReminders(baseUrl: string): Promise<DailySummary> 
   }
 
   // 3. Managers: the whole picture.
-  const meals = mothers.length;
-  const missing = items.filter(i => i.is_active && i.per_meal * meals > Math.max(0, i.stock))
-    .map(i => `${i.name} – חסר ${i.per_meal * meals - Math.max(0, i.stock)} ${i.unit}`);
+  // Each category's meals come out of its own menu and stock.
+  const missing = CATEGORIES.flatMap(c => {
+    const meals = inCategory(mothers, c.id).length;
+    const tag = c.id === 'birth' ? '' : ` (${c.label})`;
+    return inCategory(items, c.id).filter(i => i.is_active && i.per_meal * meals > Math.max(0, i.stock))
+      .map(i => `${i.name}${tag} – חסר ${i.per_meal * meals - Math.max(0, i.stock)} ${i.unit}`);
+  });
   for (const p of people.filter(x => x.role === 'admin')) {
     const r = await sendMail({ to: p.email, ...managerMail(date, mothers, tasks, nameOf, missing, baseUrl) });
     if (!r.error) summary.managersMailed++;
@@ -160,11 +177,11 @@ function volunteerMail(p: Person, date: string, delivers: Mother[], prepares: { 
 function managerMail(date: string, mothers: Mother[], tasks: Task[], nameOf: (id: string | null) => string, missing: string[], baseUrl: string) {
   const rows = mothers.map(m => {
     const t = tasks.filter(x => x.mother_id === m.id);
-    const confirm = m.confirm_response === 'ok' ? '✓ אישרה'
-      : m.confirm_response === 'change' ? `⚠ ביקשה שינוי${m.confirm_note ? `: ${esc(m.confirm_note)}` : ''}`
+    const confirm = m.confirm_response === 'ok' ? `✓ ${verb(m, 'אישרה', 'אישרו')}`
+      : m.confirm_response === 'change' ? `⚠ ${verb(m, 'ביקשה', 'ביקשו')} שינוי${m.confirm_note ? `: ${esc(m.confirm_note)}` : ''}`
       : m.reminder_sent_at ? 'נשלחה תזכורת' : m.email ? 'עוד לא נשלחה תזכורת' : 'אין מייל';
     return `<tr>
-      <td style="padding:8px;border-bottom:1px solid #F2E4EB"><strong>${esc(m.full_name)}</strong><br><span style="color:#7D6873;font-size:13px">${esc(fullAddress(m))}</span></td>
+      <td style="padding:8px;border-bottom:1px solid #F2E4EB"><strong>${esc(m.full_name)}</strong>${infoOf(m).id === 'birth' ? '' : ` · ${esc(m.occasion || infoOf(m).one)}`}<br><span style="color:#7D6873;font-size:13px">${esc(fullAddress(m))}</span></td>
       <td style="padding:8px;border-bottom:1px solid #F2E4EB">${m.delivery_volunteer_id ? esc(nameOf(m.delivery_volunteer_id)) : '<span style="color:#DC2626">לא שובצה</span>'}</td>
       <td style="padding:8px;border-bottom:1px solid #F2E4EB">${esc(STATUS_LABELS[m.delivery_status])}<br><span style="font-size:13px">הכנות ${t.filter(x => x.done).length}/${t.length}</span></td>
       <td style="padding:8px;border-bottom:1px solid #F2E4EB;font-size:13px">${confirm}</td>
@@ -173,7 +190,7 @@ function managerMail(date: string, mothers: Mother[], tasks: Task[], nameOf: (id
   const html = frame(`מחר: ${mothers.length} משלוחים`, `
     <p><strong>${esc(fullDate(date))}</strong></p>
     <table style="width:100%;border-collapse:collapse;font-size:14px">
-      <tr style="text-align:right;color:#7D6873"><th style="padding:8px">יולדת</th><th style="padding:8px">מוסרת</th><th style="padding:8px">מצב</th><th style="padding:8px">אישור</th></tr>
+      <tr style="text-align:right;color:#7D6873"><th style="padding:8px">למי</th><th style="padding:8px">מוסרת</th><th style="padding:8px">מצב</th><th style="padding:8px">אישור</th></tr>
       ${rows}
     </table>
     ${missing.length ? `<h3 style="margin:18px 0 4px;color:#92400E">חסר במלאי למחר</h3><ul style="margin:0;padding-inline-start:20px">${missing.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '<p style="color:#15803D">✓ יש מספיק מלאי למחר</p>'}

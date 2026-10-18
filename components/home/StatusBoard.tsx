@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import Icon from '@/components/ui/Icon';
+import { motherLink } from '@/lib/actions';
+import { infoOf } from '@/lib/categories';
 import { gregorianDate, hebrewDate, relativeDay, shiftDate } from '@/lib/dates';
 import {
   confirmationLabel, isOpen, nextStatus, STATUS_COLORS, STATUS_LABELS, type DeliveryStatus, type Mother,
@@ -11,8 +13,9 @@ import { buttonStyle, card, colors as C } from '@/lib/theme';
  * by day; each line shows the step, the confirmation, how much of the meal is
  * ready, and a button for the next step.
  */
-export default function StatusBoard({ mothers, progress, today, busyId, onNext, onPrep }: {
+export default function StatusBoard({ mothers, isAdmin, progress, today, busyId, onNext, onPrep }: {
   mothers: Mother[];
+  isAdmin: boolean;
   progress: Map<string, { done: number; total: number }>;
   today: string;
   busyId: string | null;
@@ -61,8 +64,16 @@ export default function StatusBoard({ mothers, progress, today, busyId, onNext, 
                   display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
                   padding: '10px 12px', borderRadius: 16, backgroundColor: C.tile,
                 }}>
-                  <Link href={`/mothers?q=${encodeURIComponent(m.full_name)}`} style={{ flex: '1 1 200px', minWidth: 0, textDecoration: 'none' }}>
-                    <span style={{ display: 'block', fontSize: 16, fontWeight: 700, color: C.text }}>{m.full_name}</span>
+                  <Link href={motherLink(m, isAdmin)} style={{ flex: '1 1 200px', minWidth: 0, textDecoration: 'none' }}>
+                    <span style={{ display: 'block', fontSize: 16, fontWeight: 700, color: C.text }}>
+                      {m.full_name}
+                      {infoOf(m).id !== 'birth' && (
+                        <span style={{
+                          marginInlineStart: 8, fontSize: 12, fontWeight: 800, padding: '2px 8px', borderRadius: 999,
+                          backgroundColor: C.accentSub, color: C.accent, whiteSpace: 'nowrap',
+                        }}>{m.occasion || infoOf(m).one}</span>
+                      )}
+                    </span>
                     <span style={{ fontSize: 13, color: C.sub }}>
                       {m.delivery_date ? `${relativeDay(m.delivery_date)} · ${gregorianDate(m.delivery_date)}` : 'לקבוע תאריך'}
                       {conf && <> · <span style={{ color: conf.tone === 'ok' ? C.success : conf.tone === 'warn' ? '#B45309' : C.sub }}>{conf.text}</span></>}

@@ -28,6 +28,7 @@ const FILES = [
   'prep-and-reminders.sql',
   'volunteers.sql',
   'workflow.sql',
+  'categories.sql',
 ];
 
 const SUPABASE_STUBS = `
@@ -236,6 +237,41 @@ const v6 = await veg();
 const seq = [v0, v1, st1, v2, v3, v4, v5, v6].join();
 if (seq === '0,1,preparing,1,0,0,0,0') console.log('  ✓ fresh items: ✓ adds to "already made", packing takes it off (not below 0), un-packing adds nothing, meal → preparing');
 else fail(`fresh-item sequence expected 0,1,preparing,1,0,0,0,0 got ${seq}`);
+
+// Categories: existing rows are births; each category has its own stock and
+// checklist; a row's category is fixed.
+const births = (await db.query(`select count(*)::int as n from mothers where category <> 'birth'`)).rows[0].n
+  + (await db.query(`select count(*)::int as n from menu_items where category <> 'birth'`)).rows[0].n;
+await db.exec(`
+  update mothers set delivery_status = 'planned', stock_used = false;
+  update menu_items set stock = 10;
+  insert into menu_items (name, unit, per_meal, stock, source, category) values ('עוגה לזוג', 'יח׳', 1, 10, 'buy', 'wedding');
+  insert into mothers (full_name, category) values ('זוג', 'wedding');`);
+const quiche = async () => (await db.query(`select stock from menu_items where name = 'פשטידה'`)).rows[0].stock;
+const cake = async () => (await db.query(`select stock from menu_items where name = 'עוגה לזוג'`)).rows[0].stock;
+await db.exec(`update mothers set delivery_status = 'ready' where full_name = 'זוג'`);
+const c1 = [await quiche(), await cake()].join();
+await db.exec(`update mothers set delivery_status = 'ready' where full_name = 'משובצת'`);
+const c2 = [await quiche(), await cake()].join();
+await db.exec(`update mothers set delivery_status = 'planned' where full_name = 'זוג'`);
+const c3 = [await quiche(), await cake()].join();
+let moved = 'changed';
+try { await db.exec(`update mothers set category = 'simcha' where full_name = 'זוג'`); } catch { moved = 'rejected'; }
+let cross = 'inserted';
+try {
+  await db.exec(`insert into prep_tasks (mother_id, menu_item_id)
+    select m.id, i.id from mothers m, menu_items i where m.full_name = 'זוג' and i.name = 'פשטידה'`);
+} catch { cross = 'rejected'; }
+let own = 'rejected';
+try {
+  await db.exec(`insert into prep_tasks (mother_id, menu_item_id)
+    select m.id, i.id from mothers m, menu_items i where m.full_name = 'זוג' and i.name = 'עוגה לזוג'`);
+  own = 'inserted';
+} catch { /* reported below */ }
+const catSeq = [births, c1, c2, c3, moved, cross, own].join('|');
+if (catSeq === '0|10,9|8,9|8,10|rejected|rejected|inserted') {
+  console.log('  ✓ categories: existing rows are births; packing uses only its own category\'s stock; category is fixed; checklist only from its own menu');
+} else fail(`categories expected 0|10,9|8,9|8,10|rejected|rejected|inserted got ${catSeq}`);
 
 await db.close();
 if (failed) { console.error('\ncheck:sql FAILED'); process.exit(1); }

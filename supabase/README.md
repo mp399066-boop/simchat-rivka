@@ -13,6 +13,7 @@ by hand. Every file is therefore **idempotent** — safe to run again at any tim
 | 4 | `prep-and-reminders.sql` | `prep_tasks` (who prepares what), mother e-mail + reminder/confirmation, `confirm_tokens` |
 | 6 | `workflow.sql` | one stock count per item (✓ on a prep adds "already made"), prep tasks for fresh items only, auto "preparing" |
 | 5 | `volunteers.sql` | the team list: volunteers without e-mail (no sign-in), city, delivers / cooks, notes |
+| 7 | `categories.sql` | categories יולדות / חתונות / שמחות: `category` on meals and menu items (own menu + stock per category), `occasion` |
 
 For an existing database, run only the new/changed file.
 

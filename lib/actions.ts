@@ -1,3 +1,4 @@
+import { infoOf, verb } from '@/lib/categories';
 import { hebrewDate, relativeDay, shiftDate } from '@/lib/dates';
 import { isOpen, type Mother } from '@/lib/mothers';
 import type { IconName } from '@/components/ui/Icon';
@@ -25,8 +26,9 @@ export const URGENCY_LABELS: Record<Urgency, string> = {
   later: 'בהמשך',
 };
 
-/** Link to the mothers page, filtered to one mother. */
-const motherLink = (m: Mother) => `/mothers?q=${encodeURIComponent(m.full_name)}`;
+/** Link to the row's category list, filtered to that one (a volunteer has one list: /mothers). */
+export const motherLink = (m: Mother, isAdmin = true) =>
+  `${isAdmin ? infoOf(m).base : '/mothers'}?q=${encodeURIComponent(m.full_name)}`;
 
 /** Below this many units on the ימות המשיח line the manager is warned (a צינתוק costs 0.1 per phone). */
 export const LOW_TZINTUK_UNITS = 2;
@@ -55,7 +57,7 @@ export function computeActions({ mothers, today, tzintukUnits = null }: {
     if (m.confirm_response === 'change') {
       actions.push({
         key: `change-${m.id}`, urgency: 'now', icon: 'alert',
-        text: `${m.full_name} ביקשה שינוי`, detail: m.confirm_note ?? undefined,
+        text: `${m.full_name} ${verb(m, 'ביקשה', 'ביקשו')} שינוי`, detail: m.confirm_note ?? undefined,
         href: motherLink(m), cta: 'לטיפול',
       });
     }
@@ -64,7 +66,7 @@ export function computeActions({ mothers, today, tzintukUnits = null }: {
       actions.push({
         key: `date-${m.id}`, urgency: 'week', icon: 'calendar',
         text: `לקבוע תאריך משלוח ל${m.full_name}`,
-        detail: m.birth_date ? `ילדה ${hebrewDate(m.birth_date)}` : undefined,
+        detail: m.birth_date ? `${infoOf(m).eventDone} ${hebrewDate(m.birth_date)}` : undefined,
         href: motherLink(m), cta: 'לקביעה',
       });
       continue;
@@ -83,7 +85,7 @@ export function computeActions({ mothers, today, tzintukUnits = null }: {
     if (date <= tomorrow && !m.confirm_response) {
       actions.push({
         key: `confirm-${m.id}`, urgency: 'now', icon: 'phone',
-        text: `לוודא עם ${m.full_name} שתהיה בבית`,
+        text: `לוודא עם ${m.full_name} ${verb(m, 'שתהיה', 'שיהיו')} בבית`,
         detail: `${when(date)}${m.phone ? ` · ${m.phone}` : ''}${m.reminder_sent_at ? ' · נשלחה תזכורת במייל' : ''}`,
         href: motherLink(m), cta: 'לסימון',
       });

@@ -1,13 +1,20 @@
-/** A new mother (יולדת) and her one-time delivery — a row of `mothers`. */
+import { verb, type Category } from '@/lib/categories';
+
+/**
+ * A recipient and her / their one-time delivery — a row of `mothers`: a new
+ * mother (יולדת), a young couple or a family with a simcha (`category`).
+ */
 export interface Mother {
   id: string;
+  category: Category;              // fixed once added (supabase/categories.sql)
   full_name: string;
+  occasion: string | null;         // a simcha: what is celebrated
   phone: string | null;
   email: string | null;            // for the reminder the day before
   address: string | null;
   city: string | null;
   address_notes: string | null;
-  birth_date: string | null;       // yyyy-mm-dd
+  birth_date: string | null;       // yyyy-mm-dd — the event: birth / wedding / simcha
   notes: string | null;
   delivery_date: string | null;    // yyyy-mm-dd; null = not scheduled yet
   delivery_status: DeliveryStatus;
@@ -59,7 +66,7 @@ export const isOpen = (m: Pick<Mother, 'delivery_status'>) =>
 
 /** The editable fields, as the form sends them. */
 export type MotherInput = Pick<Mother,
-  'full_name' | 'phone' | 'email' | 'address' | 'city' | 'address_notes' | 'birth_date' | 'notes'
+  'category' | 'full_name' | 'occasion' | 'phone' | 'email' | 'address' | 'city' | 'address_notes' | 'birth_date' | 'notes'
   | 'delivery_date' | 'delivery_status' | 'delivery_volunteer_id'>;
 
 /** Full address in one line, for display. */
@@ -68,9 +75,9 @@ export function fullAddress(m: Pick<Mother, 'address' | 'city'>): string {
 }
 
 /** What the mother answered to the reminder, for display. */
-export function confirmationLabel(m: Pick<Mother, 'reminder_sent_at' | 'confirm_response'>): { text: string; tone: 'ok' | 'warn' | 'wait' } | null {
-  if (m.confirm_response === 'ok') return { text: 'אישרה ✓', tone: 'ok' };
-  if (m.confirm_response === 'change') return { text: 'ביקשה שינוי', tone: 'warn' };
+export function confirmationLabel(m: Pick<Mother, 'category' | 'reminder_sent_at' | 'confirm_response'>): { text: string; tone: 'ok' | 'warn' | 'wait' } | null {
+  if (m.confirm_response === 'ok') return { text: `${verb(m, 'אישרה', 'אישרו')} ✓`, tone: 'ok' };
+  if (m.confirm_response === 'change') return { text: `${verb(m, 'ביקשה', 'ביקשו')} שינוי`, tone: 'warn' };
   if (m.reminder_sent_at) return { text: 'נשלחה תזכורת', tone: 'wait' };
   return null;
 }

@@ -9,9 +9,10 @@ import { card, colors as C } from '@/lib/theme';
  * What still has to be done for the coming meals, in three groups: take out
  * of the freezer, make, buy. Used on the home page and the menu page.
  */
-export default function TodoList({ lists, until, action }: {
+export default function TodoList({ lists, until, label, action }: {
   lists: TodoLists;
   until: string;          // e.g. "לשבוע הקרוב"
+  label?: string;         // the category, when the page shows several ("חתונות")
   action?: ReactNode;     // a button / link in the header
 }) {
   const empty = !lists.thaw.length && !lists.prepare.length && !lists.buy.length;
@@ -24,7 +25,7 @@ export default function TodoList({ lists, until, action }: {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: empty ? C.success : C.text, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Icon name={empty ? 'check' : 'list'} size={20} />
-          {empty ? `יש הכול ${until} ✓` : 'מה צריך עכשיו'}
+          {empty ? `יש הכול ${until} ✓` : 'מה צריך עכשיו'}{label && ` – ${label}`}
         </h2>
         {action && <span className="no-print" style={{ marginInlineStart: 'auto' }}>{action}</span>}
       </div>

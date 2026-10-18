@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useFeedback } from '@/components/ui/Feedback';
 import Modal from '@/components/ui/Modal';
+import { categoryOf, type Category } from '@/lib/categories';
 import { relativeDay, hebrewDate } from '@/lib/dates';
 import { sourceOf, type MenuItem } from '@/lib/menu';
 import { loadMenu } from '@/lib/menuData';
@@ -13,9 +14,9 @@ import { buttonStyle, colors as C, inputStyle } from '@/lib/theme';
 
 type Load = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ready'; items: MenuItem[]; tasks: PrepTask[] };
 
-/** Load the menu, add any missing lines to this meal's checklist, then load it. */
-async function fetchPrep(motherId: string): Promise<Load> {
-  const menu = await loadMenu();
+/** Load the meal's category menu, add any missing lines to its checklist, then load it. */
+async function fetchPrep(motherId: string, category: Category): Promise<Load> {
+  const menu = await loadMenu(category);
   if (menu.error !== null) return { state: 'error', message: menu.error };
   const ensured = await ensurePrepTasks(motherId, menu.data);
   if (ensured.error) return { state: 'error', message: ensured.error };
@@ -36,12 +37,13 @@ export default function PrepDialog({ mother, team, onClose }: {
   const { toast } = useFeedback();
   const [load, setLoad] = useState<Load>({ state: 'loading' });
   const [busy, setBusy] = useState(false);
+  const category = categoryOf(mother);
 
   useEffect(() => {
     let cancelled = false;
-    fetchPrep(mother.id).then(s => { if (!cancelled) setLoad(s); });
+    fetchPrep(mother.id, category).then(s => { if (!cancelled) setLoad(s); });
     return () => { cancelled = true; };
-  }, [mother.id]);
+  }, [mother.id, category]);
 
   const rows = load.state === 'ready'
     ? load.items

@@ -73,9 +73,9 @@ export async function tzintukMother(motherId: string): Promise<{ error: string |
   const { data: m, error } = await createServerClient().from('mothers')
     .select('phone').eq('id', motherId).maybeSingle();
   if (error) throw new Error(`mothers read: ${error.message}`);
-  if (!m) return { error: 'היולדת לא נמצאה' };
+  if (!m) return { error: 'לא נמצא ברשימה' };
   const phone = normalizePhone(m.phone);
-  if (!phone) return { error: 'אין ליולדת מספר טלפון תקין' };
+  if (!phone) return { error: 'אין מספר טלפון תקין' };
   return sendTzintuk([phone]);
 }
 

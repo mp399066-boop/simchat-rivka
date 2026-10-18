@@ -45,7 +45,17 @@ Follow the user's `build-standards` skill for every change. Project specifics:
 
 ## Data
 
-- `mothers` — one row per new mother incl. her one-time delivery (date,
+- **Categories** (`lib/categories.ts`, `supabase/categories.sql`): יולדות
+  (`birth`, /mothers), חתונות (`wedding` — a meal for the young couple,
+  /weddings), שמחות (`simcha`, /simchas). `category` is on `mothers` and
+  `menu_items`; each category has its own menu, stock and kitchen sheet
+  (`<base>/prep`, `<base>/menu`, sub-tabs in `components/category/CategoryTabs.tsx`;
+  pages in `components/category/`). A row's category is fixed; packing uses
+  only its own category's stock; a checklist only its own menu. Wording for
+  the recipient (she / they) via `CATEGORY_INFO` and `verb()`. Home and the
+  daily e-mails cover all categories. Volunteers have no categories (/mothers
+  shows all their deliveries; /prep = "ההכנות שלי").
+- `mothers` — one row per recipient (mother / couple / family) incl. the one-time delivery (date,
   status, `delivery_volunteer_id`). Volunteers read only rows assigned to
   them and change status only via `set_delivery_status()` (out / delivered).
 - Browser access: `lib/mothersData.ts` (load/save/delete/status) and
@@ -82,7 +92,8 @@ Follow the user's `build-standards` skill for every change. Project specifics:
   make sure she's home, set a date, overdue), then "איפה כל ארוחה עומדת"
   (`components/home/StatusBoard.tsx`, one-tap next step via `nextStatus()`),
   then the freezer / make / buy list. /guide explains the routine.
-- /prep (manager) starts with the kitchen sheet per day (`KitchenDays`).
+- `<category>/prep` (manager) starts with the kitchen sheet per day (`KitchenDays`);
+  old links /prep and /menu go to the mothers' ones.
 - /confirm is PUBLIC: the mother answers via a secret token in
   `confirm_tokens` (server only). Token "demo" = the manager's sample mail.
 

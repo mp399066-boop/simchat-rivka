@@ -18,7 +18,10 @@ const readParams = () => {
   return `${p.get('t') ?? ''}|${p.get('a') ?? ''}`;
 };
 
-type Info = { firstName: string; deliveryDate: string | null; response: 'ok' | 'change' | null };
+type Info = {
+  firstName: string; deliveryDate: string | null; response: 'ok' | 'change' | null;
+  meal?: string; title?: string; plural?: boolean;   // a young couple / a family: "you" plural
+};
 type View =
   | { state: 'loading' }
   | { state: 'invalid'; message: string }
@@ -66,6 +69,7 @@ export default function ConfirmPage() {
     }
   }
 
+  const plural = 'info' in view && !!view.info.plural;
   const missing = params !== null && !token;
   const loading = !missing && view.state === 'loading';
 
@@ -81,7 +85,7 @@ export default function ConfirmPage() {
           </span>
           <div>
             <div style={{ fontSize: 13, opacity: 0.85 }}>ארגון שמחת רבקה</div>
-            <div style={{ fontSize: 22, fontWeight: 800 }}>ארוחת בוקר ליולדת</div>
+            <div style={{ fontSize: 22, fontWeight: 800 }}>{('info' in view && view.info.title) || 'ארוחת בוקר ליולדת'}</div>
           </div>
         </div>
 
@@ -97,14 +101,13 @@ export default function ConfirmPage() {
             <>
               <div>
                 שלום {view.info.firstName} 💐<br />
-                {view.info.deliveryDate
-                  ? <>ארוחת הבוקר תגיע אלייך <strong>{fullDate(view.info.deliveryDate)}</strong>.</>
-                  : <>ארוחת הבוקר תגיע אלייך בקרוב.</>}
+                {view.info.meal ?? 'ארוחת הבוקר'} {plural ? 'תגיע אליכם' : 'תגיע אלייך'}{' '}
+                {view.info.deliveryDate ? <strong>{fullDate(view.info.deliveryDate)}</strong> : 'בקרוב'}.
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <button type="button" onClick={() => setChoice('ok')} aria-pressed={picked === 'ok'}
                   style={{ ...buttonStyle(picked === 'ok' ? 'primary' : 'secondary'), width: '100%' }}>
-                  ראיתי, תודה! ✓
+                  {plural ? 'ראינו' : 'ראיתי'}, תודה! ✓
                 </button>
                 <button type="button" onClick={() => setChoice('change')} aria-pressed={picked === 'change'}
                   style={{ ...buttonStyle(picked === 'change' ? 'primary' : 'secondary'), width: '100%' }}>
@@ -132,8 +135,8 @@ export default function ConfirmPage() {
               <div style={{ fontSize: 20, fontWeight: 800, marginTop: 6 }}>תודה {view.info.firstName}!</div>
               <div style={{ color: C.sub, marginTop: 4 }}>
                 {view.response === 'ok'
-                  ? 'קיבלנו את האישור שלך. בתיאבון ובשעה טובה!'
-                  : 'קיבלנו את הבקשה, ונחזור אלייך בהקדם.'}
+                  ? (plural ? 'קיבלנו את האישור שלכם. בתיאבון ומזל טוב!' : 'קיבלנו את האישור שלך. בתיאבון ובשעה טובה!')
+                  : (plural ? 'קיבלנו את הבקשה, ונחזור אליכם בהקדם.' : 'קיבלנו את הבקשה, ונחזור אלייך בהקדם.')}
               </div>
             </div>
           )}

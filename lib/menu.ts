@@ -1,3 +1,4 @@
+import type { Category } from '@/lib/categories';
 import { israelDate, shiftDate } from '@/lib/dates';
 import { isOpen, type Mother } from '@/lib/mothers';
 
@@ -14,9 +15,10 @@ export const SOURCES: { id: ItemSource; label: string; bg: string; text: string 
 ];
 export const sourceOf = (id: ItemSource) => SOURCES.find(s => s.id === id) ?? SOURCES[2];
 
-/** A row of `menu_items` — one thing that goes into every meal. */
+/** A row of `menu_items` — one thing that goes into every meal of its category. */
 export interface MenuItem {
   id: string;
+  category: Category;
   name: string;
   details: string | null;
   unit: string;

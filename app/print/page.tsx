@@ -5,6 +5,7 @@ import { useMe } from '@/components/layout/AppShell';
 import DateInput from '@/components/ui/DateInput';
 import Icon from '@/components/ui/Icon';
 import StatusMessage from '@/components/ui/StatusMessage';
+import { infoOf } from '@/lib/categories';
 import { fullDate, israelDate } from '@/lib/dates';
 import { fullAddress, isOpen, STATUS_LABELS } from '@/lib/mothers';
 import { teamNames, useMothers } from '@/lib/useMothers';
@@ -80,7 +81,9 @@ export default function PrintPage() {
                       <td style={td}><span style={{ display: 'inline-block', width: 18, height: 18, border: `1.5px solid ${C.text}`, borderRadius: 4 }} /></td>
                       <td style={{ ...td, fontWeight: 700 }}>
                         {m.full_name}
-                        <div style={{ fontWeight: 400, fontSize: 12, color: C.sub }}>{STATUS_LABELS[m.delivery_status]}</div>
+                        <div style={{ fontWeight: 400, fontSize: 12, color: C.sub }}>
+                          {infoOf(m).id === 'birth' ? '' : `${m.occasion || infoOf(m).one} · `}{STATUS_LABELS[m.delivery_status]}
+                        </div>
                       </td>
                       <td style={td}>
                         {fullAddress(m) || '—'}

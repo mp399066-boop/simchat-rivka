@@ -1,14 +1,16 @@
 /**
  * PUBLIC route (no login) — the mother answers her reminder e-mail.
  * Access is by the secret random token in her link (confirm_tokens, a UUID —
- * 122 random bits). Only her first name and the delivery date are returned.
+ * 122 random bits). Only her first name (a couple / family: the name), the
+ * delivery date and the kind of meal are returned.
  * The token "demo" is the manager's sample e-mail: answers, records nothing.
  *
- *   GET  /api/confirm?t=<token>               → { firstName, deliveryDate, response }
+ *   GET  /api/confirm?t=<token>               → { firstName, deliveryDate, response, meal, title, plural }
  *   POST /api/confirm { t, response, note }   → records the answer
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { infoOf, type Category } from '@/lib/categories';
 import { createServerClient } from '@/lib/supabaseServer';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -30,12 +32,16 @@ export async function GET(req: NextRequest) {
     const id = await motherIdFor(t);
     if (!id) return notFound();
     const { data, error } = await createServerClient().from('mothers')
-      .select('full_name, delivery_date, confirm_response').eq('id', id).single();
+      .select('category, full_name, delivery_date, confirm_response').eq('id', id).single();
     if (error || !data) return notFound();
+    const info = infoOf(data as { category?: Category });
     return NextResponse.json({
-      firstName: data.full_name.trim().split(/\s+/)[0],
+      firstName: info.plural ? data.full_name.trim() : data.full_name.trim().split(/\s+/)[0],
       deliveryDate: data.delivery_date,
       response: data.confirm_response,
+      meal: info.plural ? 'הארוחה' : 'ארוחת הבוקר',
+      title: info.plural ? info.meal : 'ארוחת בוקר ליולדת',
+      plural: info.plural,
     });
   } catch (e) {
     console.error('[confirm GET] failed:', (e as Error).message);
